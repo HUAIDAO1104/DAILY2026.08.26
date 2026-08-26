@@ -32,7 +32,7 @@ sealed class UpdateCheckResult {
 
 object AppUpdateManager {
     private const val latestReleaseUrl =
-        "https://api.github.com/repos/HUAIDAO1104/DailyTask/releases/latest"
+        "https://api.github.com/repos/HUAIDAO1104/DAILY2026.08.26/releases/latest"
     private const val checkIntervalMs = 24 * 60 * 60 * 1000L
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)

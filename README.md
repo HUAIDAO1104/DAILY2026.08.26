@@ -11,6 +11,9 @@
 [![JDK](https://img.shields.io/badge/JDK-17-orange.svg)](https://www.oracle.com/java)
 [![License](https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-lightgrey.svg)](LICENSE)
 [![Remote CMD](https://img.shields.io/badge/Remote%20CMD-DT%23-orange.svg)](https://github.com)
+[![Release](https://img.shields.io/github/v/release/HUAIDAO1104/DAILY2026.08.26)](https://github.com/HUAIDAO1104/DAILY2026.08.26/releases/latest)
+
+> 当前维护仓库：[HUAIDAO1104/DAILY2026.08.26](https://github.com/HUAIDAO1104/DAILY2026.08.26)
 
 ---
 
@@ -36,16 +39,16 @@
 
 - 本项目以 **PolyForm Noncommercial License 1.0.0** 发布，仅供**非商业用途**的学习与研究，
   禁止任何商业使用、倒卖或二次售卖。
-- 软件完全本地运行，不含服务端，不收集或上传任何用户数据。
+- 核心任务、请假、节假日和配置数据保存在本机；只有用户主动配置远程 AI 或检查更新时才会访问对应网络服务。
 - 软件按「现状」提供，作者不对使用过程中产生的任何后果承担责任。
 - 商业使用或授权事宜，请联系作者另行协商。
 
-> 由于存在倒卖行为，GitHub 不再提供预编译安装包。有编译能力者可自行从源码构建；
-> 否则请加入 QQ 群获取安装包。
+> 正式签名安装包统一通过当前维护仓库的 [Releases](https://github.com/HUAIDAO1104/DAILY2026.08.26/releases) 发布，请勿从不明来源下载。
 
 ### 隐私与权限说明
 
-- 本软件**完全本地运行**，不含服务端备份，不存在隐私泄露或数据窃取风险。
+- 任务、请假、执行记录与配置备份均保存在本机，不提供云端备份。
+- 远程 AI 默认不启用；仅当用户自行配置兼容接口后，输入给 AI 的指令才会发送到该接口。
 - 远程指令功能需监听 QQ、微信等即时通讯软件的消息（建议使用小号）。若介意此功能，请勿使用。
 - 使用前请仔细阅读本文档，确保您已充分了解软件的功能和限制。
 
@@ -74,7 +77,9 @@
 
 ## 最新版本
 
-**2.4.2.2** — *2026年8月13日*
+**2.5.1** — *2026年8月26日*
+
+> [下载最新正式版](https://github.com/HUAIDAO1104/DAILY2026.08.26/releases/latest)
 
 > 完整变更请查看 [版本更新日志 (CHANGELOG)](CHANGELOG.md)
 
@@ -84,7 +89,7 @@
 
 曾有人无端质疑本项目会窃取隐私、盗取数据。以下为相关聊天记录的截图，借此澄清：
 
-- 本软件完全本地运行，无服务器，不收集、不传输任何用户数据。
+- 核心任务与配置数据保存在本机；可选远程 AI 和版本更新功能会在用户启用或触发时联网。
 - 质疑之前请先了解软件的基本原理，不要靠凭空臆测做判断。
 
 ![反面教材-1](screenshot/QQ20260402-212453.png)
