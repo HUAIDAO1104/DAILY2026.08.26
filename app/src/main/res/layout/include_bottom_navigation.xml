@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<eightbitlab.com.blurview.BlurView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/bottomNavContainer"
+    android:layout_width="match_parent"
+    android:layout_height="62dp"
+    android:layout_gravity="bottom"
+    android:layout_marginHorizontal="10dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/bg_bottom_nav_glass"
+    android:elevation="18dp"
+    android:clipToOutline="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+    <LinearLayout
+        android:id="@+id/navHome"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/navHomeIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="首页"
+            android:src="@drawable/ic_nav_home"
+            app:tint="@color/text_tertiary_dark" />
+
+        <TextView
+            android:id="@+id/navHomeLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="首页"
+            android:textColor="@color/text_tertiary_dark"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/navCalendar"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/navCalendarIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="日历"
+            android:src="@drawable/ic_nav_calendar"
+            app:tint="@color/text_tertiary_dark" />
+
+        <TextView
+            android:id="@+id/navCalendarLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="日历"
+            android:textColor="@color/text_tertiary_dark"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/navRecords"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/navRecordsIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="记录"
+            android:src="@drawable/ic_nav_records"
+            app:tint="@color/text_tertiary_dark" />
+
+        <TextView
+            android:id="@+id/navRecordsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="记录"
+            android:textColor="@color/text_tertiary_dark"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/navSettings"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/navSettingsIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:contentDescription="设置"
+            android:src="@drawable/ic_nav_settings"
+            app:tint="@color/text_tertiary_dark" />
+
+        <TextView
+            android:id="@+id/navSettingsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="设置"
+            android:textColor="@color/text_tertiary_dark"
+            android:textSize="9sp" />
+    </LinearLayout>
+    </LinearLayout>
+</eightbitlab.com.blurview.BlurView>

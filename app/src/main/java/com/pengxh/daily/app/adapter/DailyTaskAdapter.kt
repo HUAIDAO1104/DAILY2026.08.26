@@ -1,17 +1,13 @@
 package com.pengxh.daily.app.adapter
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import androidx.appcompat.widget.AppCompatImageView
-import androidx.core.view.isVisible
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.pengxh.daily.app.R
-import com.pengxh.daily.app.extensions.collapse
-import com.pengxh.daily.app.extensions.expand
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
+import com.pengxh.daily.app.utils.displayName
 import com.pengxh.kt.lite.adapter.ViewHolder
 import com.pengxh.kt.lite.extensions.convertColor
 
@@ -54,27 +50,24 @@ class DailyTaskAdapter(private val dataBeans: MutableList<DailyTaskBean>) :
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val taskBean = dataBeans[position]
-        holder.setText(R.id.taskTimeView, taskBean.time)
-        val arrowView = holder.getView<AppCompatImageView>(R.id.arrowView)
-        val actualTimeCardView = holder.getView<LinearLayout>(R.id.actualTimeCardView)
+        holder.setText(R.id.taskTimeView, taskBean.time.take(5))
+        holder.setText(R.id.taskNameView, taskBean.displayName())
+        val taskMarkView = holder.getView<TextView>(R.id.taskMarkView)
         if (position == mPosition) {
             holder.itemView.isSelected = true
             val context = holder.itemView.context
-            holder.setText(R.id.actualTimeView, actualTime)
-                .setTextColor(R.id.actualTimeView, R.color.theme_color.convertColor(context))
-                .setTextColor(R.id.taskTimeView, R.color.text_hint_color.convertColor(context))
-            arrowView.animate().rotation(90f).setDuration(350).start()
-            if (!actualTimeCardView.isVisible) {
-                actualTimeCardView.expand()
-            }
+            holder.setText(R.id.actualTimeView, "正在等待执行结果 · $actualTime")
+                .setTextColor(R.id.actualTimeView, R.color.accent_red.convertColor(context))
+                .setTextColor(R.id.taskTimeView, R.color.accent_red.convertColor(context))
+            taskMarkView.text = "··"
+            taskMarkView.setBackgroundResource(R.drawable.bg_circle_red_soft)
         } else {
             holder.itemView.isSelected = false
-            holder.setText(R.id.actualTimeView, "--:--:--")
-                .setTextColor(R.id.taskTimeView, Color.BLACK)
-            arrowView.animate().rotation(0f).setDuration(350).start()
-            if (actualTimeCardView.isVisible) {
-                actualTimeCardView.collapse()
-            }
+            holder.setText(R.id.actualTimeView, if (taskBean.isEnabled) "随机时间 · 点击编辑" else "已停用 · 点击编辑")
+                .setTextColor(R.id.actualTimeView, R.color.text_secondary_dark.convertColor(holder.itemView.context))
+                .setTextColor(R.id.taskTimeView, R.color.text_primary_dark.convertColor(holder.itemView.context))
+            taskMarkView.text = if (taskBean.isEnabled) "" else "—"
+            taskMarkView.setBackgroundResource(R.drawable.bg_circle_outline)
         }
 
         holder.itemView.setOnClickListener {

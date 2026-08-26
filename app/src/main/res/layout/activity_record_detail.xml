@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/app_background_dark">
+    <com.pengxh.daily.app.widget.AuroraBackgroundView android:layout_width="match_parent" android:layout_height="match_parent" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@android:color/transparent" android:minHeight="58dp" app:navigationIcon="@drawable/ic_back_modern" app:title="记录详情" app:titleTextColor="@color/text_primary_dark" />
+        <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="28dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="19dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="180dp" android:layout_marginTop="10dp" android:background="@drawable/bg_glass_card" android:orientation="vertical" android:padding="19dp">
+                    <TextView android:id="@+id/statusView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="●  执行成功" android:textColor="@color/success_green" android:textSize="11sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/taskNameView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="上班打卡" android:textColor="@color/text_primary_dark" android:textSize="28sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/dateView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="2026年8月25日 · 企业微信" android:textColor="@color/text_secondary_dark" android:textSize="11sp" />
+                </LinearLayout>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="25dp" android:layout_marginBottom="9dp" android:text="执行过程" android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_glass_group" android:orientation="vertical" android:padding="16dp">
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="●　任务进入调度" android:textColor="@color/text_primary_dark" android:textSize="13sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/plannedTimelineView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:layout_marginTop="5dp" android:text="计划时间 08:50" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                    <View android:layout_width="1dp" android:layout_height="24dp" android:layout_marginStart="5dp" android:background="@color/divider_dark" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="●　等待目标应用结果" android:textColor="@color/text_primary_dark" android:textSize="13sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/actualTimelineView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:layout_marginTop="5dp" android:text="实际执行 08:49" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                    <View android:layout_width="1dp" android:layout_height="24dp" android:layout_marginStart="5dp" android:background="@color/divider_dark" />
+                    <TextView android:id="@+id/resultTimelineView" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="●　已确认结果" android:textColor="@color/success_green" android:textSize="13sp" android:textStyle="bold" />
+                    <TextView android:id="@+id/detailView" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="18dp" android:layout_marginTop="5dp" android:text="已通过通知确认" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                </LinearLayout>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="25dp" android:layout_marginBottom="9dp" android:text="执行数据" android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_glass_group" android:orientation="vertical">
+                    <TextView android:id="@+id/plannedValueView" android:layout_width="match_parent" android:layout_height="60dp" android:gravity="center_vertical" android:paddingHorizontal="16dp" android:text="计划时间　　　　　　　　　08:50" android:textColor="@color/text_primary_dark" android:textSize="12sp" />
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="16dp" android:background="@color/divider_dark" />
+                    <TextView android:id="@+id/actualValueView" android:layout_width="match_parent" android:layout_height="60dp" android:gravity="center_vertical" android:paddingHorizontal="16dp" android:text="实际时间　　　　　　　　　08:49" android:textColor="@color/text_primary_dark" android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+</FrameLayout>

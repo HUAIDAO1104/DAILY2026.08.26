@@ -3,8 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/back_ground_color"
+    android:background="@color/app_background_dark"
+    android:clipChildren="false"
     android:keepScreenOn="true">
+
+    <eightbitlab.com.blurview.BlurTarget
+        android:id="@+id/blurTarget"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.pengxh.daily.app.widget.AuroraBackgroundView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no" />
+    </eightbitlab.com.blurview.BlurTarget>
 
     <LinearLayout
         android:id="@+id/rootView"
@@ -16,88 +28,429 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/theme_color"
-            app:menu="@menu/main_top_bar_menu"
-            app:subtitleTextAppearance="@style/TextAppearance.Material3.TitleSmall"
-            app:subtitleTextColor="@color/white"
-            app:titleTextColor="@color/white" />
+            android:background="@android:color/transparent"
+            android:contentInsetStart="17dp"
+            android:contentInsetEnd="17dp"
+            android:minHeight="54dp">
 
-        <LinearLayout
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_red_gradient_button"
+                    android:gravity="center"
+                    android:text="DT"
+                    android:textColor="@color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:text="DailyTask"
+                    android:textColor="@color/text_primary_dark"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/addTaskButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_circle_glass"
+                    android:clickable="true"
+                    android:contentDescription="添加任务"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="＋"
+                    android:textColor="@color/accent_red"
+                    android:textSize="22sp" />
+
+                <LinearLayout
+                    android:id="@+id/aiTopButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_glass_card_small"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="10dp">
+
+                    <View
+                        android:id="@+id/aiTopOrb"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:background="@drawable/bg_ai_orb" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="7dp"
+                        android:text="AI 助手"
+                        android:textColor="@color/text_primary_dark"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.appbar.MaterialToolbar>
+
+        <androidx.core.widget.NestedScrollView
             android:id="@+id/contentView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="never"
+            android:paddingBottom="96dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/white"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:paddingHorizontal="17dp">
 
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/repeatTimeView"
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/homeDateView"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@color/theme_color"
-                    android:drawablePadding="@dimen/dp_4"
-                    android:paddingHorizontal="@dimen/dp_16"
-                    android:paddingTop="0dp"
-                    android:paddingBottom="@dimen/dp_12"
-                    android:singleLine="true"
-                    android:text="--分钟后刷新每日任务"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                    android:textColor="@color/white"
-                    app:drawableStartCompat="@drawable/ic_sand" />
+                    android:layout_marginStart="2dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="15dp"
+                    android:text="8月26日 · 星期三　工作日"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="12sp" />
+
+                <eightbitlab.com.blurview.BlurView
+                    android:id="@+id/heroCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="236dp"
+                    android:background="@drawable/bg_glass_card"
+                    android:elevation="2dp"
+                    android:padding="18dp">
+
+                    <View
+                        android:id="@+id/heroGlow"
+                        android:layout_width="180dp"
+                        android:layout_height="180dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="-86dp"
+                        android:layout_marginEnd="-70dp"
+                        android:background="@drawable/bg_circle_red_soft"
+                        android:alpha="0.22" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="34dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/heroKickerView"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:letterSpacing="0.12"
+                                android:text="NEXT TASK"
+                                android:textColor="#A6FFFFFF"
+                                android:textSize="10sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/executeTaskButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="34dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minWidth="76dp"
+                                android:minHeight="0dp"
+                                android:text="●  已就绪"
+                                android:textAllCaps="false"
+                                android:textColor="@color/accent_red"
+                                android:textSize="10sp"
+                                app:backgroundTint="@color/accent_red_soft"
+                                app:cornerRadius="17dp" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/nextTaskTimeView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="9dp"
+                            android:fontFamily="sans-serif"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="-0.06"
+                            android:maxLines="2"
+                            android:text="18:05"
+                            android:textColor="@color/text_primary_dark"
+                            android:textSize="54sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/heroTaskTitleView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:text="下班打卡　企业微信"
+                            android:textColor="@color/text_primary_dark"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tipsView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:maxLines="1"
+                            android:textColor="@color/text_secondary_dark"
+                            android:textSize="10sp" />
+
+                        <Space
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="@color/divider_dark" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="34dp"
+                            android:gravity="bottom"
+                            android:orientation="horizontal"
+                            android:paddingTop="12dp">
+
+                            <TextView
+                                android:id="@+id/repeatTimeView"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:maxLines="1"
+                                android:text="预计 18:02—18:08"
+                                android:textColor="#9EFFFFFF"
+                                android:textSize="10sp" />
+
+                            <TextView
+                                android:id="@+id/heroProgressView"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="今日完成 1 / 2"
+                                android:textColor="#9EFFFFFF"
+                                android:textSize="10sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </eightbitlab.com.blurview.BlurView>
+
+                <LinearLayout
+                    android:id="@+id/aiAssistantLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="74dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_glass_card_small"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="13dp">
+
+                    <View
+                        android:id="@+id/aiInsightOrb"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ai_orb" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="11dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="AI 今日检查"
+                            android:textColor="@color/text_primary_dark"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/aiInsightNoteView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="权限、网络与日期规则正常，可按时执行"
+                            android:textColor="@color/text_secondary_dark"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_status_pill"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:text="查看"
+                        android:textColor="@color/accent_red"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="@dimen/dp_16">
+                    android:layout_marginTop="20dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/tipsView"
+                    <TextView
                         android:layout_width="0dp"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:gravity="center_vertical"
-                        android:hint="点击按钮开始执行任务"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:textColor="@color/theme_color"
-                        android:textColorHint="@color/lib_hint_color" />
+                        android:text="今日任务"
+                        android:textColor="@color/text_primary_dark"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/executeTaskButton"
+                    <TextView
+                        android:id="@+id/taskCountView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="@dimen/dp_16"
-                        android:text="启动"
-                        app:icon="@mipmap/ic_start"
-                        app:iconTint="@color/ios_green" />
+                        android:text="0 / 2"
+                        android:textColor="@color/text_tertiary_dark"
+                        android:textSize="10sp" />
+
+                    <TextView
+                        android:id="@+id/leaveStatusView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:visibility="gone" />
                 </LinearLayout>
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="9dp"
+                    android:background="@drawable/bg_glass_group">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                    <LinearLayout
+                        android:id="@+id/emptyView"
+                        android:layout_width="match_parent"
+                        android:layout_height="88dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:background="@drawable/bg_circle_red_soft"
+                            android:gravity="center"
+                            android:text="＋"
+                            android:textColor="@color/accent_red"
+                            android:textSize="18sp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="还没有任务"
+                                android:textColor="@color/text_primary_dark"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="点击右上角 ＋ 添加第一个时间点"
+                                android:textColor="@color/text_secondary_dark"
+                                android:textSize="9sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/aiPromptLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="26dp"
+                    android:background="@drawable/bg_glass_card_small"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp">
+
+                    <View
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:background="@drawable/bg_ai_orb" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:text="问 AI：今天为什么不打卡？"
+                        android:textColor="@color/text_secondary_dark"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⌁"
+                        android:textColor="#A6FFFFFF"
+                        android:textSize="17sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/quickLeaveButton"
+                    android:layout_width="1dp"
+                    android:layout_height="1dp"
+                    android:visibility="gone" />
             </LinearLayout>
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginVertical="@dimen/dp_8"
-                android:layout_weight="1">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-
-                <com.pengxh.kt.lite.widget.EmptyView
-                    android:id="@+id/emptyView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:visibility="gone"
-                    app:show_reload_button="false" />
-            </FrameLayout>
-        </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
+
+    <include layout="@layout/include_bottom_navigation" />
 
     <RelativeLayout
         android:id="@+id/maskView"

@@ -46,6 +46,8 @@ class FloatingWindowService : Service(), CoroutineScope by CoroutineScope(Dispat
     override fun onCreate() {
         super.onCreate()
         binding = WindowFloatingBinding.inflate(LayoutInflater.from(this))
+        // 空闲时不覆盖应用内容，收到倒计时事件后再显示。
+        binding.root.alpha = 0f
         floatViewParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,

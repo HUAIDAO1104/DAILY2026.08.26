@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/app_background_dark">
+    <com.pengxh.daily.app.widget.AuroraBackgroundView android:layout_width="match_parent" android:layout_height="match_parent" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@android:color/transparent" android:minHeight="58dp" app:navigationIcon="@drawable/ic_back_modern" app:title="配置备份" app:titleTextColor="@color/text_primary_dark" />
+        <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="28dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="19dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="随时可以，\n回到之前。" android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="重要修改和应用更新前会自动保存，本机最多保留最近 8 份配置。" android:textColor="@color/text_secondary_dark" android:textSize="11sp" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/createBackupButton" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="22dp" android:text="立即备份当前配置" android:textColor="@color/white" app:backgroundTint="@color/accent_red" app:cornerRadius="14dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="25dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="本机备份" android:textAppearance="@style/TextAppearance.DailyTask.Section" /><TextView android:id="@+id/backupCountView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 份" android:textColor="@color/text_tertiary_dark" android:textSize="10sp" /></LinearLayout>
+                <LinearLayout android:id="@+id/backupListLayout" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/bg_glass_group" android:orientation="vertical" />
+                <TextView android:id="@+id/emptyView" android:layout_width="match_parent" android:layout_height="120dp" android:layout_marginTop="10dp" android:background="@drawable/bg_glass_card" android:gravity="center" android:text="还没有本机备份" android:textColor="@color/text_secondary_dark" android:textSize="12sp" android:visibility="gone" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+</FrameLayout>

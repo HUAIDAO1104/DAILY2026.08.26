@@ -1,6 +1,7 @@
 package com.pengxh.daily.app.ui
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -31,10 +32,13 @@ import com.pengxh.daily.app.service.NotificationMonitorService
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
 import com.pengxh.daily.app.utils.Constant
-import com.pengxh.daily.app.utils.DailyTask
+import com.pengxh.daily.app.utils.AppUpdateInfo
+import com.pengxh.daily.app.utils.AppUpdateManager
 import com.pengxh.daily.app.utils.FloatingWindowController
 import com.pengxh.daily.app.utils.GestureController
 import com.pengxh.daily.app.utils.LogFileManager
+import com.pengxh.daily.app.utils.LeaveManager
+import com.pengxh.daily.app.utils.LeavePeriod
 import com.pengxh.daily.app.utils.MaskViewController
 import com.pengxh.daily.app.utils.MessageDispatcher
 import com.pengxh.daily.app.utils.MonitorEvent
@@ -42,15 +46,16 @@ import com.pengxh.daily.app.utils.ProjectionSession
 import com.pengxh.daily.app.utils.TaskDataManager
 import com.pengxh.daily.app.utils.TaskScheduler
 import com.pengxh.daily.app.utils.TipsEvent
-import com.pengxh.daily.app.utils.WatermarkDrawable
+import com.pengxh.daily.app.utils.UpdateCheckResult
+import com.pengxh.daily.app.utils.displayName
 import com.pengxh.kt.lite.base.KotlinBaseActivity
-import com.pengxh.kt.lite.divider.RecyclerViewItemBorder
 import com.pengxh.kt.lite.extensions.convertColor
 import com.pengxh.kt.lite.extensions.dp2px
 import com.pengxh.kt.lite.extensions.navigatePageTo
 import com.pengxh.kt.lite.extensions.show
 import com.pengxh.kt.lite.extensions.toJson
 import com.pengxh.kt.lite.utils.SaveKeyValues
+import com.pengxh.kt.lite.utils.LoadingDialog
 import com.pengxh.kt.lite.widget.dialog.AlertInputDialog
 import com.pengxh.kt.lite.widget.dialog.BottomActionSheet
 import kotlinx.coroutines.Dispatchers
@@ -59,18 +64,21 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.Date
 import java.util.Locale
 
 class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
+    companion object {
+        private const val EXTRA_RETURN_FROM_TARGET = "return_from_target_app"
+    }
+
     private val kTag = "MainActivity"
     private val context by lazy { this }
-    private val dateTimeFormat by lazy {
-        SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss EEEE", Locale.CHINA)
-    }
+    private val homeDateFormat by lazy { SimpleDateFormat("M月d日 · EEEE", Locale.CHINA) }
     private val dateFormat by lazy { SimpleDateFormat("yyyy-MM-dd", Locale.CHINA) }
-    private val marginOffset by lazy { 16.dp2px(this) }
     private val permissionContract by lazy { ActivityResultContracts.StartActivityForResult() }
     private val taskDataManager by lazy { TaskDataManager() }
 
@@ -80,6 +88,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     private val maskViewController by lazy { MaskViewController(this, binding, insetsController) }
     private val gestureController by lazy { GestureController(this, maskViewController) }
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private var runningStartedAt = 0L
 
     private var taskBeans = mutableListOf<DailyTaskBean>()
     private val dailyTaskAdapter by lazy {
@@ -97,15 +106,16 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     }
 
     /**
-     * 每秒刷新 toolbar 时间和日期标签
+     * 每秒刷新日期与运行计时
      * */
     private val timeUpdateRunnable = object : Runnable {
         override fun run() {
-            val currentTime = dateTimeFormat.format(Date())
-            val parts = currentTime.split(" ")
-            binding.toolbar.apply {
-                title = "${parts[2]}（${TaskScheduler.getDayFlag()}）"
-                subtitle = "${parts[0]} ${parts[1]}"
+            binding.homeDateView.text = "${homeDateFormat.format(Date())}　${TaskScheduler.getDayFlag()}"
+            if (TaskScheduler.isRunning() && runningStartedAt > 0L) {
+                val elapsedSeconds = (SystemClock.elapsedRealtime() - runningStartedAt) / 1000
+                binding.nextTaskTimeView.text = String.format(
+                    Locale.getDefault(), "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60
+                )
             }
             mainHandler.postDelayed(this, 1000)
         }
@@ -120,6 +130,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     }
 
     override fun setupTopBarLayout() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { view, insets ->
             val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
             view.setPadding(0, statusBarHeight, 0, 0)
@@ -128,50 +139,13 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
         // 显示时间
         mainHandler.post(timeUpdateRunnable)
-
-        binding.toolbar.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.menu_add_task -> {
-                    if (TaskScheduler.isRunning()) {
-                        "任务进行中，无法添加".show(this)
-                        return@setOnMenuItemClickListener true
-                    }
-
-                    if (taskBeans.isNotEmpty()) {
-                        createTask()
-                    } else {
-                        BottomActionSheet.Builder()
-                            .setContext(this)
-                            .setActionItemTitle(arrayListOf("添加任务", "导入任务"))
-                            .setItemTextColor(R.color.theme_color.convertColor(this))
-                            .setOnActionSheetListener(object :
-                                BottomActionSheet.OnActionSheetListener {
-                                override fun onActionItemClick(position: Int) {
-                                    when (position) {
-                                        0 -> createTask()
-                                        1 -> importTask()
-                                    }
-                                }
-                            }).build().show()
-                    }
-                }
-
-                R.id.menu_settings -> {
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("使用须知")
-                        .setMessage("本软件完全免费！仅供内部使用！严禁商用或者用作其他非法用途！\r\n近期发现有人在咸鱼私自倒卖本软件，请勿购买！如有购买，请联系卖家退款！")
-                        .setCancelable(false)
-                        .setPositiveButton("知道了") { _, _ -> navigatePageTo<SettingsActivity>() }
-                        .show()
-                }
-            }
-            true
-        }
+        binding.heroCard.setupWith(binding.blurTarget).setBlurRadius(22f).setOverlayColor(
+            R.color.glass_surface_soft.convertColor(this)
+        )
+        BottomNavController.bind(this, binding.root, BottomNavController.Tab.HOME)
     }
 
     override fun initOnCreate(savedInstanceState: Bundle?) {
-        binding.contentView.background = WatermarkDrawable(this, DailyTask.getWatermarkText())
-
         // 加载任务列表
         lifecycleScope.launch {
             taskBeans = withContext(Dispatchers.IO) {
@@ -190,11 +164,8 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
             binding.recyclerView.adapter = dailyTaskAdapter
             dailyTaskAdapter.refresh(taskBeans)
-            binding.recyclerView.addItemDecoration(
-                RecyclerViewItemBorder(
-                    marginOffset, marginOffset shr 1, marginOffset, marginOffset shr 1
-                )
-            )
+            updateHomeSummary()
+            binding.recyclerView.itemAnimator = null
         }
 
         // 显示悬浮窗
@@ -229,16 +200,22 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
         lifecycleScope.launch {
             TaskScheduler.isRunning.collectLatest { running ->
                 if (running) {
-                    binding.executeTaskButton.setIconResource(R.mipmap.ic_stop)
-                    binding.executeTaskButton.setIconTintResource(R.color.red)
-                    binding.executeTaskButton.text = "停止"
+                    if (runningStartedAt == 0L) runningStartedAt = SystemClock.elapsedRealtime()
+                    binding.executeTaskButton.backgroundTintList = ColorStateList.valueOf(
+                        R.color.accent_red_soft.convertColor(this@MainActivity)
+                    )
+                    binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
+                    binding.executeTaskButton.text = "●  实时 · 停止"
                 } else {
+                    runningStartedAt = 0L
                     dailyTaskAdapter.updateCurrentTaskState(-1)
-                    binding.tipsView.text = ""
-                    binding.executeTaskButton.setIconResource(R.mipmap.ic_start)
-                    binding.executeTaskButton.setIconTintResource(R.color.ios_green)
-                    binding.executeTaskButton.text = "启动"
+                    binding.executeTaskButton.backgroundTintList = ColorStateList.valueOf(
+                        R.color.accent_red_soft.convertColor(this@MainActivity)
+                    )
+                    binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
+                    binding.executeTaskButton.text = "●  已就绪"
                 }
+                updateHomeSummary()
             }
         }
 
@@ -254,7 +231,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             TaskScheduler.tipsEvent.collectLatest { event ->
                 when (event) {
                     is TipsEvent.Skip -> {
-                        binding.tipsView.text = "今日为周末，跳过任务"
+                        binding.tipsView.text = "今日为休息日或请假日，已跳过任务"
                         binding.tipsView.setTextColor(R.color.ios_green.convertColor(this@MainActivity))
                         MessageDispatcher.sendMessage(
                             "任务跳过通知", "当前为节假日，任务已自动跳过，请注意下次打卡时间"
@@ -265,6 +242,9 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                         binding.tipsView.text = "准备执行第 ${event.index} 个任务"
                         binding.tipsView.setTextColor(R.color.theme_color.convertColor(this@MainActivity))
                         dailyTaskAdapter.updateCurrentTaskState(event.index - 1, event.actualTime)
+                        binding.heroKickerView.text = "TASK RUNNING"
+                        binding.heroTaskTitleView.text = "正在等待任务结果"
+                        binding.heroProgressView.text = "第 ${event.index} / ${event.total} 项"
 
                         val content = buildString {
                             appendLine("准备执行第 ${event.index} 个任务")
@@ -287,9 +267,21 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
         // 兜底检查是否有错过的每日重置
         checkMissedReset()
+        checkForUpdates(force = false, showNoUpdateMessage = false)
     }
 
     override fun initEvent() {
+        val openAi = View.OnClickListener { navigatePageTo<AiAssistantActivity>() }
+        binding.aiAssistantLayout.setOnClickListener(openAi)
+        binding.aiTopButton.setOnClickListener(openAi)
+        binding.aiPromptLayout.setOnClickListener(openAi)
+        binding.addTaskButton.setOnClickListener {
+            if (TaskScheduler.isRunning()) {
+                "任务进行中，无法添加".show(this)
+            } else {
+                startActivity(Intent(this, TaskEditorActivity::class.java).putExtra(TaskEditorActivity.EXTRA_ID, -1))
+            }
+        }
         binding.executeTaskButton.setOnClickListener {
             if (TaskScheduler.isRunning()) {
                 doStopTask()
@@ -313,10 +305,21 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
         if (!Settings.canDrawOverlays(this)) {
             "悬浮窗权限未开启，部分功能可能无法正常使用".show(this)
         }
+        lifecycleScope.launch {
+            taskBeans = withContext(Dispatchers.IO) { DatabaseWrapper.loadAllTask() }
+            dailyTaskAdapter.refresh(taskBeans)
+            binding.recyclerView.visibility = if (taskBeans.isEmpty()) View.GONE else View.VISIBLE
+            binding.emptyView.visibility = if (taskBeans.isEmpty()) View.VISIBLE else View.GONE
+            updateHomeSummary()
+        }
+        if (AppUpdateManager.hasPendingInstall()) {
+            AppUpdateManager.installOrRequestPermission(this)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         LogFileManager.writeLog("onNewIntent: $packageName 回到前台")
 
         if (ProjectionSession.isStateActive()) {
@@ -329,7 +332,10 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             }
         }
 
-        if (!maskViewController.isMaskVisible()) {
+        // 只有从目标打卡应用返回时才进入伪装息屏；底部导航回首页不能触发。
+        if (intent.getBooleanExtra(EXTRA_RETURN_FROM_TARGET, false) &&
+            !maskViewController.isMaskVisible()
+        ) {
             maskViewController.showMaskView()
         }
     }
@@ -439,6 +445,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             FloatingWindowController.updateTime((remaining / 1000).toInt())
             delay(minOf(1000L, remaining).coerceAtLeast(1))
         }
+        FloatingWindowController.hide()
     }
 
     // ================================================================
@@ -453,36 +460,10 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             "任务进行中，无法修改".show(this)
             return
         }
-        val item = taskBeans[position]
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_layout_select_time, null)
-        val dialog = BottomSheetDialog(this)
-        dialog.setContentView(view)
-        val titleView = view.findViewById<MaterialTextView>(R.id.titleView)
-        titleView.text = "修改任务时间"
-        val timePicker = view.findViewById<TimeWheelLayout>(R.id.timePicker)
-        timePicker.setDefaultValue(item.convertToTimeEntity())
-        view.findViewById<MaterialButton>(R.id.saveButton).setOnClickListener {
-            val time = String.format(
-                Locale.getDefault(),
-                "%02d:%02d:%02d",
-                timePicker.selectedHour,
-                timePicker.selectedMinute,
-                timePicker.selectedSecond
-            )
-
-            lifecycleScope.launch {
-                item.time = time
-                withContext(Dispatchers.IO) {
-                    DatabaseWrapper.updateTask(item)
-                }
-                taskBeans = withContext(Dispatchers.IO) {
-                    DatabaseWrapper.loadAllTask()
-                }
-                dailyTaskAdapter.refresh(taskBeans)
-                dialog.dismiss()
-            }
-        }
-        dialog.show()
+        startActivity(
+            Intent(this, TaskEditorActivity::class.java)
+                .putExtra(TaskEditorActivity.EXTRA_ID, taskBeans[position].id)
+        )
     }
 
     /**
@@ -510,6 +491,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                             DatabaseWrapper.loadAllTask()
                         }
                         dailyTaskAdapter.refresh(taskBeans)
+                        updateHomeSummary()
 
                         if (taskBeans.isEmpty()) {
                             binding.recyclerView.visibility = View.GONE
@@ -561,6 +543,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                     DatabaseWrapper.loadAllTask()
                 }
                 dailyTaskAdapter.refresh(taskBeans)
+                updateHomeSummary()
                 dialog.dismiss()
             }
         }
@@ -589,6 +572,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                                         DatabaseWrapper.loadAllTask()
                                     }
                                     dailyTaskAdapter.refresh(taskBeans)
+                                    updateHomeSummary()
                                     binding.recyclerView.visibility = View.VISIBLE
                                     binding.emptyView.visibility = View.GONE
                                 }
@@ -604,6 +588,105 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
                 override fun onCancelClick() {}
             }).build().show()
+    }
+
+    private suspend fun updateHomeSummary() {
+        val now = LocalTime.now()
+        val enabledTasks = taskBeans.filter { it.isEnabled }
+        val nextBean = enabledTasks
+            .firstOrNull { bean -> runCatching { LocalTime.parse(bean.time).isAfter(now) }.getOrDefault(false) }
+        val next = enabledTasks
+            .mapNotNull { bean -> runCatching { LocalTime.parse(bean.time) }.getOrNull() }
+            .firstOrNull { it.isAfter(now) }
+
+        val periods = withContext(Dispatchers.IO) { LeaveManager.periodsFor(LocalDate.now()) }
+        val allDayLeave = LeavePeriod.ALL_DAY in periods ||
+                (LeavePeriod.MORNING in periods && LeavePeriod.AFTERNOON in periods)
+        val records = withContext(Dispatchers.IO) {
+            DatabaseWrapper.loadExecutionRecordsForDate(LocalDate.now())
+        }
+        val completed = records.count { it.status == com.pengxh.daily.app.utils.ExecutionRecordManager.SUCCESS }
+            .coerceAtMost(enabledTasks.size)
+        binding.taskCountView.text = if (allDayLeave) "均已跳过" else "$completed / ${enabledTasks.size}"
+        binding.heroProgressView.text = if (allDayLeave) "今日任务已暂停" else "今日完成 $completed / ${enabledTasks.size}"
+
+        when {
+            allDayLeave -> {
+                binding.heroKickerView.text = "REST DAY"
+                binding.nextTaskTimeView.text = "今天，\n安心休息。"
+                binding.nextTaskTimeView.textSize = 38f
+                binding.nextTaskTimeView.letterSpacing = -0.04f
+                binding.heroTaskTitleView.text = "全部任务已暂停 · 明天自动恢复"
+                binding.tipsView.text = "请假优先级高于日常任务规则"
+                binding.repeatTimeView.text = "无需手动开启"
+                binding.executeTaskButton.text = "全天请假"
+                binding.executeTaskButton.isEnabled = TaskScheduler.isRunning()
+                binding.aiInsightNoteView.text = "已识别全天请假，任务将在明天自动恢复"
+            }
+            TaskScheduler.isRunning() -> {
+                binding.heroKickerView.text = "TASK RUNNING"
+                binding.nextTaskTimeView.textSize = 52f
+                binding.nextTaskTimeView.letterSpacing = -0.06f
+                binding.heroTaskTitleView.text = "${nextBean?.displayName() ?: "今日任务"}　等待结果通知"
+                binding.repeatTimeView.text = "目标应用运行中"
+                binding.executeTaskButton.isEnabled = true
+                binding.aiInsightNoteView.text = "目标应用运行正常，正在等待结果通知"
+            }
+            else -> {
+                binding.heroKickerView.text = "NEXT TASK"
+                binding.nextTaskTimeView.text = next?.toString()?.take(5) ?: "--:--"
+                binding.nextTaskTimeView.textSize = 54f
+                binding.nextTaskTimeView.letterSpacing = -0.06f
+                val target = when (SaveKeyValues.loadInt(Constant.TARGET_APP_KEY, 0)) {
+                    1 -> "企业微信"
+                    2 -> "飞书"
+                    3 -> "移动办公 M3"
+                    else -> "钉钉"
+                }
+                binding.heroTaskTitleView.text = "${nextBean?.displayName() ?: "今天没有待执行任务"}　$target"
+                val range = SaveKeyValues.loadInt(Constant.TIME_RANGE_KEY, Constant.DEFAULT_TIME_RANGE)
+                val random = SaveKeyValues.loadBoolean(Constant.RANDOM_TIME_KEY, true)
+                binding.repeatTimeView.text = if (next == null) "等待明日任务" else if (random) "随机 ±$range 分钟" else "按计划时间执行"
+                binding.tipsView.text = if (next == null) "今天已无待执行时间" else "通知、权限与日期规则已检查"
+                binding.executeTaskButton.text = "●  已就绪"
+                binding.executeTaskButton.isEnabled = enabledTasks.isNotEmpty()
+                binding.aiInsightNoteView.text = if (enabledTasks.isEmpty()) "还没有任务，添加后即可开始" else "权限、网络与日期规则正常，可按时执行"
+            }
+        }
+    }
+
+    private fun checkForUpdates(force: Boolean, showNoUpdateMessage: Boolean) {
+        lifecycleScope.launch {
+            when (val result = AppUpdateManager.check(this@MainActivity, force)) {
+                is UpdateCheckResult.Available -> showUpdateDialog(result.info)
+                is UpdateCheckResult.Error -> if (showNoUpdateMessage) result.message.show(this@MainActivity)
+                UpdateCheckResult.NoPublishedRelease -> if (showNoUpdateMessage) "暂未发布可下载版本".show(this@MainActivity)
+                UpdateCheckResult.UpToDate -> if (showNoUpdateMessage) "当前已是最新版本".show(this@MainActivity)
+            }
+        }
+    }
+
+    private fun showUpdateDialog(info: AppUpdateInfo) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("发现新版本 ${info.version}")
+            .setMessage(info.notes.ifBlank { "修复问题并改进使用体验。" })
+            .setNegativeButton("稍后", null)
+            .setPositiveButton("备份并更新") { _, _ ->
+                lifecycleScope.launch {
+                    LoadingDialog.show(this@MainActivity, "正在下载更新...")
+                    try {
+                        val apk = AppUpdateManager.download(this@MainActivity, info)
+                        LoadingDialog.dismiss()
+                        if (!AppUpdateManager.installOrRequestPermission(this@MainActivity, apk)) {
+                            "请允许安装更新，返回后会继续".show(this@MainActivity)
+                        }
+                    } catch (e: Exception) {
+                        LoadingDialog.dismiss()
+                        (e.message ?: "更新下载失败").show(this@MainActivity)
+                    }
+                }
+            }
+            .show()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -636,17 +719,21 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     }
 
     private fun backToMainActivity() {
+        val returnIntent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(EXTRA_RETURN_FROM_TARGET, true)
+        }
         if (SaveKeyValues.loadBoolean(Constant.BACK_TO_HOME_KEY, false)) {
             //模拟点击Home键
             startActivity(Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) })
             lifecycleScope.launch(Dispatchers.IO) {
                 delay(1000)
                 withContext(Dispatchers.Main) {
-                    navigatePageTo<MainActivity>()
+                    startActivity(returnIntent)
                 }
             }
         } else {
-            navigatePageTo<MainActivity>()
+            startActivity(returnIntent)
         }
     }
 

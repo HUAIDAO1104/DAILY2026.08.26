@@ -12,6 +12,7 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import com.pengxh.daily.app.BuildConfig
 import com.pengxh.daily.app.R
@@ -22,12 +23,13 @@ import com.pengxh.daily.app.service.CaptureImageService
 import com.pengxh.daily.app.service.FloatingWindowService
 import com.pengxh.daily.app.service.NotificationMonitorService
 import com.pengxh.daily.app.utils.ChinaHolidayManager
+import com.pengxh.daily.app.utils.AppUpdateInfo
+import com.pengxh.daily.app.utils.AppUpdateManager
 import com.pengxh.daily.app.utils.Constant
-import com.pengxh.daily.app.utils.DailyTask
 import com.pengxh.daily.app.utils.MessageDispatcher
 import com.pengxh.daily.app.utils.ProjectionEvent
 import com.pengxh.daily.app.utils.ProjectionSession
-import com.pengxh.daily.app.utils.WatermarkDrawable
+import com.pengxh.daily.app.utils.UpdateCheckResult
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.convertColor
 import com.pengxh.kt.lite.extensions.navigatePageTo
@@ -72,12 +74,14 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
     }
 
     override fun setupTopBarLayout() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { view, insets ->
             val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
             view.setPadding(0, statusBarHeight, 0, 0)
             insets
         }
         binding.toolbar.setNavigationOnClickListener { finish() }
+        BottomNavController.bind(this, binding.root, BottomNavController.Tab.SETTINGS)
     }
 
     override fun initOnCreate(savedInstanceState: Bundle?) {
@@ -88,9 +92,6 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
         if (notificationEnable()) {
             turnOnNotificationMonitorService()
         }
-
-        val watermark = DailyTask.getWatermarkText()
-        binding.contentView.background = WatermarkDrawable(this, watermark)
 
         lifecycleScope.launch {
             ChinaHolidayManager.syncResult.collect { result ->
@@ -258,12 +259,20 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
         }
 
         binding.taskConfigLayout.setOnClickListener {
-            navigatePageTo<TaskConfigActivity>()
+            navigatePageTo<TaskManagementActivity>()
         }
 
         binding.updateHolidayLayout.setOnClickListener {
             LoadingDialog.show(this, "更新中，请稍后...")
-            ChinaHolidayManager.updateChinaHolidayData()
+            ChinaHolidayManager.updateChinaHolidayData(force = true)
+        }
+
+        binding.holidayRulesLayout.setOnClickListener {
+            navigatePageTo<HolidayRulesActivity>()
+        }
+
+        binding.backupLayout.setOnClickListener {
+            navigatePageTo<BackupActivity>()
         }
 
         binding.floatingSwitch.setOnClickListener {
@@ -377,6 +386,18 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
         binding.introduceLayout.setOnClickListener {
             navigatePageTo<QuestionAndAnswerActivity>()
         }
+
+        binding.aiAssistantLayout.setOnClickListener {
+            navigatePageTo<AiAssistantActivity>()
+        }
+
+        binding.leaveManagementLayout.setOnClickListener {
+            navigatePageTo<LeaveManagementActivity>()
+        }
+
+        binding.updateLayout.setOnClickListener {
+            checkForUpdates()
+        }
     }
 
     private val overlayPermissionLauncher = registerForActivityResult(permissionContract) {
@@ -418,6 +439,9 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
 
     override fun onResume() {
         super.onResume()
+        if (AppUpdateManager.hasPendingInstall()) {
+            AppUpdateManager.installOrRequestPermission(this)
+        }
         if (Settings.canDrawOverlays(this)) {
             binding.floatingSwitch.isChecked = true
             binding.floatingTipsView.visibility = View.GONE
@@ -533,5 +557,52 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun checkForUpdates() {
+        LoadingDialog.show(this, "正在检查更新...")
+        lifecycleScope.launch {
+            when (val result = AppUpdateManager.check(this@SettingsActivity, force = true)) {
+                is UpdateCheckResult.Available -> {
+                    LoadingDialog.dismiss()
+                    showUpdateDialog(result.info)
+                }
+                is UpdateCheckResult.Error -> {
+                    LoadingDialog.dismiss()
+                    result.message.show(this@SettingsActivity)
+                }
+                UpdateCheckResult.NoPublishedRelease -> {
+                    LoadingDialog.dismiss()
+                    "项目暂未发布可下载版本".show(this@SettingsActivity)
+                }
+                UpdateCheckResult.UpToDate -> {
+                    LoadingDialog.dismiss()
+                    "当前已是最新版本".show(this@SettingsActivity)
+                }
+            }
+        }
+    }
+
+    private fun showUpdateDialog(info: AppUpdateInfo) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("发现新版本 ${info.version}")
+            .setMessage(info.notes.ifBlank { "修复问题并改进使用体验。" })
+            .setNegativeButton("稍后", null)
+            .setPositiveButton("备份并更新") { _, _ ->
+                lifecycleScope.launch {
+                    LoadingDialog.show(this@SettingsActivity, "正在下载更新...")
+                    try {
+                        val apk = AppUpdateManager.download(this@SettingsActivity, info)
+                        LoadingDialog.dismiss()
+                        if (!AppUpdateManager.installOrRequestPermission(this@SettingsActivity, apk)) {
+                            "请允许安装更新，返回后会继续".show(this@SettingsActivity)
+                        }
+                    } catch (e: Exception) {
+                        LoadingDialog.dismiss()
+                        (e.message ?: "更新下载失败").show(this@SettingsActivity)
+                    }
+                }
+            }
+            .show()
     }
 }

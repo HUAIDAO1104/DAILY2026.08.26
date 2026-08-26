@@ -33,6 +33,11 @@ object Constant {
     // 不导出的sp缓存
     const val LAST_RESET_DATE_KEY = "LAST_RESET_DATE_KEY"
     const val RESULT_SOURCE_KEY = "RESULT_SOURCE_KEY"
+    const val LAST_APP_VERSION_KEY = "LAST_APP_VERSION_KEY"
+
+    // AI 服务配置（API Key 使用 Android Keystore 单独加密保存）
+    const val AI_BASE_URL_KEY = "AI_BASE_URL_KEY"
+    const val AI_MODEL_KEY = "AI_MODEL_KEY"
 
     // ============================================================
     // ConfigStore 键

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Calendar
 
@@ -104,6 +105,11 @@ object TaskScheduler {
                 if (shouldSkipToday()) {
                     _tipsEvent.emit(TipsEvent.Skip)
                     ForegroundRunningService.emitNotificationText("今日休息，任务已跳过")
+                    ExecutionRecordManager.recordDay(
+                        ExecutionRecordManager.SKIPPED,
+                        "全天任务已跳过",
+                        "请假、节假日或固定休息日规则生效"
+                    )
                 } else {
                     val schedule = buildTodaySchedule()
                     if (schedule.isEmpty()) {
@@ -160,6 +166,13 @@ object TaskScheduler {
                 LogFileManager.writeLog(
                     "第 ${task.displayIndex} 个任务已过期（计划=${task.plannedTime}，" +
                             "实际=${task.actualTime}），跳过"
+                )
+                ExecutionRecordManager.recordTask(
+                    task.task,
+                    task.plannedTime,
+                    task.actualTime,
+                    ExecutionRecordManager.SKIPPED,
+                    "任务时间已过，自动跳过"
                 )
                 continue
             }
@@ -226,6 +239,7 @@ object TaskScheduler {
 
             timeoutJob.cancel()
             clockInDeferred = null
+            FloatingWindowController.hide()
 
             // 超时路径——打卡失败，回到主页 + 兜底通知 + 继续下一个任务
             if (!clockInSuccess) {
@@ -249,6 +263,14 @@ object TaskScheduler {
                     )
                 }
             }
+
+            ExecutionRecordManager.recordTask(
+                task.task,
+                task.plannedTime,
+                task.actualTime,
+                if (clockInSuccess) ExecutionRecordManager.SUCCESS else ExecutionRecordManager.TIMEOUT,
+                if (clockInSuccess) "已通过目标应用通知确认" else "等待结果超时，请手动确认"
+            )
 
             // ====== 阶段 3：回到主界面，处理结果 ======
             executedCount++
@@ -313,6 +335,7 @@ object TaskScheduler {
         job?.cancel()
         job = null
         _isRunning.value = false
+        FloatingWindowController.hide()
         ForegroundRunningService.emitNotificationText("为保证程序正常运行，请勿移除此通知")
     }
 
@@ -329,6 +352,7 @@ object TaskScheduler {
         job?.cancel()
         job = null
         _isRunning.value = false
+        FloatingWindowController.hide()
     }
 
     /**
@@ -348,11 +372,15 @@ object TaskScheduler {
         }
     }
 
-    private fun shouldSkipToday(): Boolean {
+    private suspend fun shouldSkipToday(): Boolean {
+        val today = LocalDate.now()
+        if (LeaveManager.isAllDayLeave(today)) {
+            LogFileManager.writeLog("今日已设置全天请假，跳过任务")
+            return true
+        }
+
         val skipEnabled = SaveKeyValues.loadBoolean(Constant.SKIP_HOLIDAY_KEY, true)
         if (!skipEnabled) return false
-
-        val today = LocalDate.now()
 
         // 调休补班日（覆盖一切，必须执行）
         if (ChinaHolidayManager.isWorkday(today)) {
@@ -390,7 +418,15 @@ object TaskScheduler {
             .toInstant()
             .toEpochMilli()
 
-        return allTasks.map { task ->
+        val leavePeriods = LeaveManager.periodsFor(LocalDate.now())
+
+        return allTasks.filter { it.isEnabled }.mapNotNull { task ->
+            val plannedTime = runCatching { LocalTime.parse(task.time) }.getOrNull()
+                ?: return@mapNotNull null
+            if (LeaveManager.shouldSkipTime(plannedTime, leavePeriods)) {
+                LogFileManager.writeLog("任务 ${task.time} 位于请假时段，已跳过")
+                return@mapNotNull null
+            }
             val actualTime = task.resolveExecutionTime()
             val timeParts = actualTime.split(":").map { it.toInt() }
             val actualMillis = baseMillis +

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/app_background_dark">
+
+    <com.pengxh.daily.app.widget.AuroraBackgroundView android:layout_width="match_parent" android:layout_height="match_parent" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:minHeight="58dp"
+            app:navigationIcon="@drawable/ic_back_modern"
+            app:title="休息日规则"
+            app:titleTextColor="@color/text_primary_dark" />
+
+        <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="28dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="19dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="该休息时，\n不会打扰。"
+                    android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:background="@drawable/bg_glass_group" android:orientation="vertical">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="70dp" android:gravity="center_vertical" android:paddingHorizontal="16dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="法定节假日不打卡" android:textColor="@color/text_primary_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="春节、国庆等日期自动跳过" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                        </LinearLayout>
+                        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/skipHolidaySwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="16dp" android:background="@color/divider_dark" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="70dp" android:gravity="center_vertical" android:paddingHorizontal="16dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="调休补班正常打卡" android:textColor="@color/text_primary_dark" android:textSize="14sp" android:textStyle="bold" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="补班日优先于固定周末规则" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                        </LinearLayout>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="始终开启" android:textColor="@color/success_green" android:textSize="10sp" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="25dp" android:layout_marginBottom="9dp" android:text="固定工作日" android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+                <LinearLayout android:id="@+id/weekdaysLayout" android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center" android:orientation="horizontal" />
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="20dp" android:layout_marginBottom="9dp" android:text="节假日数据" android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="74dp" android:background="@drawable/bg_glass_group" android:gravity="center_vertical" android:paddingHorizontal="16dp">
+                    <TextView android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_red_soft" android:gravity="center" android:text="26" android:textColor="@color/accent_red" android:textSize="11sp" android:textStyle="bold" />
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="年度节假日数据" android:textColor="@color/text_primary_dark" android:textSize="13sp" android:textStyle="bold" />
+                        <TextView android:id="@+id/dataStatusView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="自动同步官方节假日与补班日" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                    </LinearLayout>
+                    <TextView android:id="@+id/syncButton" android:layout_width="wrap_content" android:layout_height="34dp" android:background="@drawable/bg_status_pill" android:gravity="center" android:paddingHorizontal="12dp" android:text="同步" android:textColor="@color/accent_red" android:textSize="10sp" android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="4dp" android:layout_marginTop="15dp" android:text="判断顺序：请假 → 法定节假日与补班 → 固定工作日。补班日始终优先执行。" android:textColor="@color/text_tertiary_dark" android:textSize="10sp" />
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+</FrameLayout>

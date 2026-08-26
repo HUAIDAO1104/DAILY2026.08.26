@@ -24,6 +24,18 @@ public interface DailyTaskBeanDao {
     @Query("SELECT COUNT(*) FROM daily_task_table WHERE time = :time")
     int queryTaskByTime(String time);
 
+    @Query("SELECT * FROM daily_task_table WHERE id = :id LIMIT 1")
+    DailyTaskBean findById(int id);
+
+    @Query("SELECT * FROM daily_task_table WHERE time = :time LIMIT 1")
+    DailyTaskBean findByTime(String time);
+
+    @Query("DELETE FROM daily_task_table WHERE id = :id")
+    void deleteById(int id);
+
     @Insert
     void insert(DailyTaskBean bean);
+
+    @Query("DELETE FROM daily_task_table")
+    void deleteAll();
 }

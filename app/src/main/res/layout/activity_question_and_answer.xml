@@ -1,39 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/rootView"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/back_ground_color"
-    android:orientation="vertical">
-
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/theme_color"
-        app:navigationIcon="@drawable/ic_title_left"
-        app:title="常见问题"
-        app:titleTextColor="@color/white" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
-
-    <TextView
-        android:id="@+id/marqueeView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="marquee"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:marqueeRepeatLimit="-1"
-        android:padding="@dimen/dp_16"
-        android:singleLine="true"
-        android:text="Tips：由于本人不再使用，测试不尽仔细，如有问题请加QQ群：560354109（1群）、643595483（2群）、377923252（3群）。"
-        android:textColor="@color/lib_hint_color"
-        android:textSize="@dimen/sp_12" />
-</LinearLayout>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/rootView" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/app_background_dark">
+    <com.pengxh.daily.app.widget.AuroraBackgroundView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@android:color/transparent" android:contentInsetStartWithNavigation="4dp" android:minHeight="56dp" app:navigationIcon="@drawable/ic_back_modern" app:title="帮助与关于" app:titleTextColor="@color/text_primary_dark" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="19dp" android:layout_marginTop="10dp" android:text="常见问题" android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerView" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="14dp" android:layout_weight="1" android:clipToPadding="false" android:overScrollMode="never" android:paddingHorizontal="19dp" android:paddingBottom="12dp" app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        <TextView android:id="@+id/marqueeView" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:paddingHorizontal="19dp" android:paddingVertical="12dp" android:text="Tips：如遇运行问题，请先在设置中检查通知、悬浮窗与截屏权限。" android:textColor="@color/text_tertiary_dark" android:textSize="9sp" />
+    </LinearLayout>
+</FrameLayout>

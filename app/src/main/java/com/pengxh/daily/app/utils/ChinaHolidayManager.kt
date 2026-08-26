@@ -59,15 +59,17 @@ object ChinaHolidayManager {
     private val isSyncing = AtomicBoolean(false)
     private val dataMutex = Mutex()
 
-    fun updateChinaHolidayData() {
+    fun updateChinaHolidayData(force: Boolean = false) {
         if (!isSyncing.compareAndSet(false, true)) {
             Log.w(kTag, "Already syncing, skip duplicate request")
             return
         }
         scope.launch {
             try {
-                tryLoadFromCache()
-                if (holidayDates.isNotEmpty()) return@launch
+                if (!force) {
+                    tryLoadFromCache()
+                    if (holidayDates.isNotEmpty() || workdayDates.isNotEmpty()) return@launch
+                }
                 fetchAndParse()
             } finally {
                 isSyncing.set(false)

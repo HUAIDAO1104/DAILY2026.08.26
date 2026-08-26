@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_gravity="center"
-    app:cardBackgroundColor="@color/black"
-    app:cardCornerRadius="@dimen/dp_16">
+    android:layout_height="36dp"
+    android:background="@drawable/bg_glass_card_small"
+    android:elevation="8dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="7dp">
 
-    <LinearLayout
+    <com.pengxh.daily.app.widget.WaveProgressView
+        android:id="@+id/waveProgressView"
+        android:layout_width="24dp"
+        android:layout_height="24dp" />
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="18dp"
+        android:layout_marginHorizontal="7dp"
+        android:background="@color/divider_dark" />
+
+    <TextView
+        android:id="@+id/timeView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="6dp"
-        android:paddingVertical="@dimen/dp_4">
-
-        <com.pengxh.daily.app.widget.WaveProgressView
-            android:id="@+id/waveProgressView"
-            android:layout_width="@dimen/dp_24"
-            android:layout_height="@dimen/dp_24" />
-
-        <View
-            android:layout_width="@dimen/dividerLine"
-            android:layout_height="match_parent"
-            android:layout_marginHorizontal="6dp"
-            android:layout_marginVertical="@dimen/dp_4"
-            android:background="@color/white" />
-
-        <TextView
-            android:id="@+id/timeView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="30s"
-            android:textColor="@color/white" />
-    </LinearLayout>
-</androidx.cardview.widget.CardView>
+        android:gravity="center"
+        android:minWidth="26dp"
+        android:text="30s"
+        android:textColor="@color/text_primary_dark"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+</LinearLayout>

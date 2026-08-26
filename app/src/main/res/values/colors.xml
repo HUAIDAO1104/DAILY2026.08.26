@@ -1,14 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="theme_color">#3399FF</color>
+    <color name="theme_color">#FF3B30</color>
     <color name="ios_green">#4DDC64</color>
-    <color name="back_ground_color">#F1F1F1</color>
-    <color name="text_hint_color">#CCCCCC</color>
-    <color name="text_default_color">#424242</color>
+    <color name="back_ground_color">#09090B</color>
+    <color name="text_hint_color">#8E8E93</color>
+    <color name="text_default_color">#F5F5F7</color>
 
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
     <color name="red">#FF0000</color>
     <color name="orange">#FFC107</color>
     <color name="light_gray">#D3D3D3</color>
+
+    <color name="app_background_dark">#07080B</color>
+    <color name="surface_dark">#111216</color>
+    <color name="surface_elevated_dark">#1B1C22</color>
+    <color name="glass_surface">#9427272F</color>
+    <color name="glass_surface_strong">#C71C1D23</color>
+    <color name="glass_surface_soft">#73191920</color>
+    <color name="glass_stroke">#24FFFFFF</color>
+    <color name="glass_highlight">#19FFFFFF</color>
+    <color name="accent_red">#FF5362</color>
+    <color name="accent_red_deep">#B51637</color>
+    <color name="accent_red_soft">#2EFF5362</color>
+    <color name="accent_purple_soft">#283F2D78</color>
+    <color name="success_green">#4BD17B</color>
+    <color name="warning_amber">#E9AD55</color>
+    <color name="text_primary_dark">#F7F7F9</color>
+    <color name="text_secondary_dark">#9A9AA2</color>
+    <color name="text_tertiary_dark">#73737C</color>
+    <color name="divider_dark">#17FFFFFF</color>
+    <color name="scrim_dark">#B8050609</color>
 </resources>

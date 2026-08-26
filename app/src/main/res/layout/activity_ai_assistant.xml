@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/app_background_dark">
+
+    <com.pengxh.daily.app.widget.AuroraBackgroundView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
+    <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#4D08080C" />
+
+    <LinearLayout
+        android:id="@+id/assistantContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="15dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:contentInsetStart="4dp"
+            android:contentInsetEnd="4dp"
+            android:minHeight="64dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <View android:id="@+id/headerOrb" android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_ai_orb" />
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Task Intelligence" android:textColor="@color/text_primary_dark" android:textSize="15sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="本机状态已连接 · 隐私模式" android:textColor="@color/text_secondary_dark" android:textSize="9sp" />
+                </LinearLayout>
+                <TextView android:id="@+id/aiConfigButton" android:layout_width="wrap_content" android:layout_height="34dp" android:background="@drawable/bg_status_pill" android:gravity="center" android:paddingHorizontal="10dp" android:text="模型" android:textColor="@color/text_secondary_dark" android:textSize="10sp" />
+                <ImageView android:id="@+id/closeButton" android:layout_width="34dp" android:layout_height="34dp" android:layout_marginStart="8dp" android:background="@drawable/bg_circle_glass" android:padding="8dp" android:src="@drawable/ic_close_round" />
+            </LinearLayout>
+        </com.google.android.material.appbar.MaterialToolbar>
+
+        <ScrollView
+            android:id="@+id/conversationScrollView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="never"
+            android:paddingHorizontal="3dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="12dp">
+            <LinearLayout android:id="@+id/conversationLayout" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+        </ScrollView>
+
+        <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:scrollbars="none">
+            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingBottom="9dp">
+                <com.google.android.material.button.MaterialButton android:id="@+id/leaveSuggestion" android:layout_width="wrap_content" android:layout_height="34dp" android:insetTop="0dp" android:insetBottom="0dp" android:minHeight="0dp" android:text="明天请假" android:textColor="@color/text_secondary_dark" android:textSize="9sp" app:backgroundTint="@color/glass_surface_soft" app:cornerRadius="12dp" app:strokeColor="@color/glass_stroke" app:strokeWidth="1dp" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/weekendSuggestion" android:layout_width="wrap_content" android:layout_height="34dp" android:layout_marginStart="6dp" android:insetTop="0dp" android:insetBottom="0dp" android:minHeight="0dp" android:text="周末节假日不打卡" android:textColor="@color/text_secondary_dark" android:textSize="9sp" app:backgroundTint="@color/glass_surface_soft" app:cornerRadius="12dp" app:strokeColor="@color/glass_stroke" app:strokeWidth="1dp" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/randomSuggestion" android:layout_width="wrap_content" android:layout_height="34dp" android:layout_marginStart="6dp" android:insetTop="0dp" android:insetBottom="0dp" android:minHeight="0dp" android:text="关闭随机时间" android:textColor="@color/text_secondary_dark" android:textSize="9sp" app:backgroundTint="@color/glass_surface_soft" app:cornerRadius="12dp" app:strokeColor="@color/glass_stroke" app:strokeWidth="1dp" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <LinearLayout
+            android:id="@+id/composerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:background="@drawable/bg_input_glass"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:padding="7dp">
+
+            <EditText
+                android:id="@+id/promptInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:gravity="center_vertical"
+                android:hint="输入任务、请假或问题…"
+                android:imeOptions="actionSend"
+                android:inputType="textCapSentences|textMultiLine"
+                android:maxLines="4"
+                android:minHeight="42dp"
+                android:paddingHorizontal="8dp"
+                android:textColor="@color/text_primary_dark"
+                android:textColorHint="@color/text_secondary_dark"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sendButton"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:contentDescription="发送"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="@color/accent_red"
+                app:cornerRadius="13dp"
+                app:icon="@drawable/ic_send_modern"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/white" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

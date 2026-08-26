@@ -10,6 +10,7 @@ import android.view.animation.ScaleAnimation
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import com.pengxh.daily.app.databinding.ActivityMainBinding
 import com.pengxh.kt.lite.extensions.setScreenBrightness
@@ -55,8 +56,12 @@ class MaskViewController(
     }
 
     fun hideMaskView() {
-        // 显示悬浮窗
-        FloatingWindowController.show()
+        // 仅在任务倒计时仍运行时显示悬浮窗，普通页面不被覆盖。
+        if (TaskScheduler.isRunning()) {
+            FloatingWindowController.show()
+        } else {
+            FloatingWindowController.hide()
+        }
 
         // 停止时钟动画
         stopClockAnimation()
@@ -80,6 +85,7 @@ class MaskViewController(
 
         binding.maskView.visibility = View.GONE
         binding.rootView.visibility = View.VISIBLE
+        ViewCompat.requestApplyInsets(binding.rootView)
     }
 
     fun isMaskVisible(): Boolean = binding.maskView.isVisible
