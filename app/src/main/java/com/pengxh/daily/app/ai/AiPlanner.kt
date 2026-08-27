@@ -29,6 +29,24 @@ class AiPlanner(private val configStore: AiConfigStore) {
         return requestRemotePlan(config, command, stateJson)
     }
 
+    suspend fun fetchAvailableModels(apiKeyOverride: String? = null): List<AiModelOption> =
+        withContext(Dispatchers.IO) {
+            val apiKey = apiKeyOverride?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: configStore.load().apiKey
+            check(apiKey.isNotBlank()) { "请先填写 API Key" }
+            val request = Request.Builder()
+                .url("${AiConfigStore.FIXED_BASE_URL}/models")
+                .header("Authorization", "Bearer $apiKey")
+                .header("Accept", "application/json")
+                .get()
+                .build()
+            client.newCall(request).execute().use { response ->
+                val raw = response.body.string()
+                check(response.isSuccessful) { responseError(response.code, raw) }
+                parseAvailableModels(raw)
+            }
+        }
+
     private suspend fun requestRemotePlan(
         config: AiServiceConfig,
         command: String,
@@ -37,6 +55,7 @@ class AiPlanner(private val configStore: AiConfigStore) {
         val requestJson = JsonObject().apply {
             addProperty("model", config.model)
             addProperty("temperature", 0)
+            addProperty("max_tokens", 4096)
             add("messages", gson.toJsonTree(listOf(
                 mapOf("role" to "system", "content" to systemPrompt(stateJson)),
                 mapOf("role" to "user", "content" to command)
@@ -51,7 +70,7 @@ class AiPlanner(private val configStore: AiConfigStore) {
 
         client.newCall(request).execute().use { response ->
             val raw = response.body.string()
-            check(response.isSuccessful) { "AI 服务请求失败（HTTP ${response.code}）" }
+            check(response.isSuccessful) { responseError(response.code, raw) }
             val root = JsonParser.parseString(raw).asJsonObject
             val content = root.getAsJsonArray("choices")
                 ?.firstOrNull()?.asJsonObject
@@ -62,6 +81,19 @@ class AiPlanner(private val configStore: AiConfigStore) {
                 .removePrefix("```json").removePrefix("```")
                 .removeSuffix("```").trim()
             gson.fromJson(clean, AiActionPlan::class.java) ?: error("AI 返回的操作计划为空")
+        }
+    }
+
+    private fun responseError(code: Int, raw: String): String {
+        val serviceMessage = runCatching {
+            val root = JsonParser.parseString(raw).asJsonObject
+            root.getAsJsonObject("error")?.get("message")?.asString
+                ?: root.get("message")?.asString
+        }.getOrNull()?.trim().orEmpty()
+        return if (serviceMessage.isBlank()) {
+            "AI 服务请求失败（HTTP $code）"
+        } else {
+            "AI 服务请求失败：$serviceMessage"
         }
     }
 
@@ -87,4 +119,30 @@ class AiPlanner(private val configStore: AiConfigStore) {
 
         当前应用状态：$stateJson
     """.trimIndent()
+}
+
+data class AiModelOption(
+    val id: String,
+    val owner: String,
+    val supportsOpenAi: Boolean
+)
+
+internal fun parseAvailableModels(raw: String): List<AiModelOption> {
+    val data = JsonParser.parseString(raw).asJsonObject.getAsJsonArray("data")
+        ?: error("接口没有返回模型列表")
+    return data.mapNotNull { item ->
+        val model = item.asJsonObject
+        val id = model.get("id")?.asString?.trim().orEmpty()
+        if (id.isBlank()) return@mapNotNull null
+        AiModelOption(
+            id = id,
+            owner = model.get("owned_by")?.asString?.trim().orEmpty(),
+            supportsOpenAi = model.getAsJsonArray("supported_endpoint_types")
+                ?.any { it.asString.equals("openai", ignoreCase = true) } != false
+        )
+    }.distinctBy { it.id }.sortedWith(
+        compareByDescending<AiModelOption> { it.supportsOpenAi }
+            .thenByDescending { it.id.equals("qwen3-max", ignoreCase = true) }
+            .thenBy { it.id.lowercase() }
+    ).also { check(it.isNotEmpty()) { "接口返回的模型列表为空" } }
 }

@@ -12,14 +12,17 @@ class AiConfigStore(context: Context) {
     private val secureStore = SecureValueStore(context)
 
     fun load() = AiServiceConfig(
-        baseUrl = SaveKeyValues.loadString(Constant.AI_BASE_URL_KEY, ""),
+        baseUrl = FIXED_BASE_URL,
         model = SaveKeyValues.loadString(Constant.AI_MODEL_KEY, ""),
         apiKey = secureStore.loadApiKey()
     )
 
-    fun save(baseUrl: String, model: String, apiKey: String?) {
-        SaveKeyValues.saveString(Constant.AI_BASE_URL_KEY, baseUrl.trim().trimEnd('/'))
+    fun save(model: String, apiKey: String?) {
         SaveKeyValues.saveString(Constant.AI_MODEL_KEY, model.trim())
         if (apiKey != null) secureStore.saveApiKey(apiKey.trim())
+    }
+
+    companion object {
+        const val FIXED_BASE_URL = "https://llm-api.mcisaas.com/v1"
     }
 }

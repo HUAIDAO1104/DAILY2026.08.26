@@ -1,9 +1,11 @@
 package com.pengxh.daily.app.ui
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.TextViewCompat
 import androidx.lifecycle.lifecycleScope
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.databinding.ActivityRecordDetailBinding
@@ -41,17 +43,20 @@ class RecordDetailActivity : KotlinBaseActivity<ActivityRecordDetailBinding>() {
             }
             val success = record.status == ExecutionRecordManager.SUCCESS
             binding.statusView.text = when (record.status) {
-                ExecutionRecordManager.SUCCESS -> "●  执行成功"
-                ExecutionRecordManager.TIMEOUT -> "●  结果超时"
-                else -> "●  已自动跳过"
+                ExecutionRecordManager.SUCCESS -> "执行成功"
+                ExecutionRecordManager.TIMEOUT -> "结果超时"
+                else -> "已自动跳过"
             }
-            binding.statusView.setTextColor((if (success) R.color.success_green else R.color.warning_amber).convertColor(this@RecordDetailActivity))
+            val statusColor = (if (success) R.color.success_green else R.color.warning_amber).convertColor(this@RecordDetailActivity)
+            binding.statusView.setTextColor(statusColor)
+            TextViewCompat.setCompoundDrawableTintList(binding.statusView, ColorStateList.valueOf(statusColor))
             binding.taskNameView.text = record.taskName.orEmpty().ifBlank { "任务记录" }
             val date = runCatching { LocalDate.parse(record.date) }.getOrNull()
             binding.dateView.text = date?.format(DateTimeFormatter.ofPattern("yyyy年M月d日")) ?: record.date
             binding.plannedTimelineView.text = "计划时间 ${record.plannedTime.orEmpty().take(5).ifBlank { "—" }}"
             binding.actualTimelineView.text = "实际执行 ${record.actualTime.orEmpty().take(5).ifBlank { "—" }}"
-            binding.resultTimelineView.text = if (success) "●　已确认结果" else "●　任务已结束"
+            binding.resultTimelineView.text = if (success) "已确认结果" else "任务已结束"
+            TextViewCompat.setCompoundDrawableTintList(binding.resultTimelineView, ColorStateList.valueOf(statusColor))
             binding.detailView.text = record.detail
             binding.plannedValueView.text = "计划时间　　　　　　　　　${record.plannedTime.orEmpty().take(5).ifBlank { "—" }}"
             binding.actualValueView.text = "实际时间　　　　　　　　　${record.actualTime.orEmpty().take(5).ifBlank { "—" }}"

@@ -50,7 +50,7 @@
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="20dp" android:layout_marginBottom="9dp" android:text="节假日数据" android:textAppearance="@style/TextAppearance.DailyTask.Label" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="74dp" android:background="@drawable/bg_glass_group" android:gravity="center_vertical" android:paddingHorizontal="16dp">
-                    <TextView android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_red_soft" android:gravity="center" android:text="26" android:textColor="@color/accent_red" android:textSize="14sp" android:textStyle="bold" />
+                    <ImageView android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_red_soft" android:contentDescription="年度节假日数据" android:padding="8dp" android:src="@drawable/ic_calendar_data_modern" app:tint="@color/accent_red" />
                     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="年度节假日数据" android:textColor="@color/text_primary_dark" android:textSize="14sp" android:textStyle="bold" />
                         <TextView android:id="@+id/dataStatusView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="自动同步官方节假日与补班日" android:textColor="@color/text_secondary_dark" android:textSize="12sp" />

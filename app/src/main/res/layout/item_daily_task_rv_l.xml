@@ -11,14 +11,13 @@
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
-    <TextView
+    <ImageView
         android:id="@+id/taskMarkView"
         android:layout_width="25dp"
         android:layout_height="25dp"
         android:background="@drawable/bg_circle_outline"
-        android:gravity="center"
-        android:textColor="@color/accent_red"
-        android:textSize="12sp" />
+        android:padding="6dp"
+        app:tint="@color/accent_red" />
 
     <LinearLayout
         android:layout_width="0dp"

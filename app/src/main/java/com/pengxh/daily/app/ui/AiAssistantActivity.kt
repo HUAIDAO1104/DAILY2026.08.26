@@ -1,28 +1,40 @@
 package com.pengxh.daily.app.ui
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
-import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.ai.AiConfigStore
+import com.pengxh.daily.app.ai.AiModelOption
 import com.pengxh.daily.app.ai.AiPlanner
 import com.pengxh.daily.app.ai.DailyTaskOperations
 import com.pengxh.daily.app.ai.ValidatedAiPlan
 import com.pengxh.daily.app.databinding.ActivityAiAssistantBinding
-import com.pengxh.daily.app.utils.DailyTaskDialogs
+import com.pengxh.daily.app.widget.AiCompanionView
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.dp2px
 import com.pengxh.kt.lite.extensions.show
@@ -52,6 +64,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             binding.composerContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = baseBottom + maxOf(navigation, keyboard)
             }
+            binding.assistantPresenceCard.visibility = if (keyboard > 0) View.GONE else View.VISIBLE
             if (keyboard > 0) scrollToBottom()
         }
         ViewCompat.setOnApplyWindowInsetsListener(binding.assistantContent) { _, insets ->
@@ -75,7 +88,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
 
     override fun initOnCreate(savedInstanceState: Bundle?) {
         overridePendingTransition(R.anim.ai_enter, R.anim.stay)
-        startOrbAnimation(binding.headerOrb)
+        setAssistantState(AiCompanionView.State.IDLE)
         addMessage(
             "你可以直接告诉我要做什么。我会先列出具体修改，只有你确认后才会执行。\n\n例如：‘明天下午请假’、‘把 8 点任务改到 8 点半’。",
             fromUser = false
@@ -94,7 +107,18 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         binding.leaveSuggestion.setOnClickListener { sendSuggestion("明天全天请假，不执行打卡任务") }
         binding.weekendSuggestion.setOnClickListener { sendSuggestion("周末和法定节假日不打卡") }
         binding.randomSuggestion.setOnClickListener { sendSuggestion("关闭随机时间") }
-        binding.promptInput.setOnFocusChangeListener { _, focused -> if (focused) scrollToBottom() }
+        binding.promptInput.setOnFocusChangeListener { _, focused ->
+            if (focused) {
+                setAssistantState(AiCompanionView.State.AWARE)
+                scrollToBottom()
+            } else if (binding.sendButton.isEnabled) {
+                setAssistantState(AiCompanionView.State.IDLE)
+            }
+        }
+        binding.assistantPresenceCard.setOnClickListener {
+            binding.promptInput.requestFocus()
+            setAssistantState(AiCompanionView.State.AWARE)
+        }
     }
 
     private fun sendSuggestion(text: String) {
@@ -114,12 +138,15 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
                 val plan = planner.createPlan(command, state)
                 if (plan.actions.isEmpty()) {
                     addMessage(plan.reply.ifBlank { "这句话没有包含明确的修改操作。你可以说得更具体一些。" }, false)
+                    celebrateAssistant()
                 } else {
                     val validated = operations.validate(plan)
                     addPlanCard(validated)
+                    setAssistantState(AiCompanionView.State.AWARE)
                 }
             } catch (e: Exception) {
                 addMessage(e.message ?: "处理失败，请稍后重试", false)
+                showAssistantError()
             } finally {
                 setLoading(false)
             }
@@ -225,8 +252,10 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             try {
                 val results = withContext(Dispatchers.IO) { operations.execute(plan) }
                 addMessage("操作完成\n${results.joinToString("\n") { "• $it" }}", false)
+                celebrateAssistant()
             } catch (e: Exception) {
                 addMessage("执行中止：${e.message ?: "未知错误"}\n已完成的操作可能已生效，可通过配置快照恢复。", false)
+                showAssistantError()
             } finally {
                 setLoading(false)
             }
@@ -234,36 +263,177 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     }
 
     private fun showConfigDialog() {
-        val view = layoutInflater.inflate(R.layout.dialog_ai_config, null)
-        val baseUrl = view.findViewById<EditText>(R.id.baseUrlInput)
-        val model = view.findViewById<EditText>(R.id.modelInput)
-        val apiKey = view.findViewById<EditText>(R.id.apiKeyInput)
+        val inflationParent = FrameLayout(this)
+        val view = layoutInflater.inflate(R.layout.dialog_ai_config, inflationParent, false)
+        val endpoint = view.findViewById<TextView>(R.id.endpointValueView)
+        val apiKeyLayout = view.findViewById<TextInputLayout>(R.id.apiKeyLayout)
+        val apiKey = view.findViewById<TextInputEditText>(R.id.apiKeyInput)
+        val loadModels = view.findViewById<MaterialButton>(R.id.loadModelsButton)
+        val loading = view.findViewById<CircularProgressIndicator>(R.id.modelLoadingIndicator)
+        val connectionStatus = view.findViewById<TextView>(R.id.connectionStatusView)
+        val modelSelector = view.findViewById<View>(R.id.modelSelector)
+        val modelValue = view.findViewById<TextView>(R.id.modelValueView)
+        val modelMeta = view.findViewById<TextView>(R.id.modelMetaView)
+        val modelExpandIcon = view.findViewById<ImageView>(R.id.modelExpandIcon)
+        val modelCatalog = view.findViewById<LinearLayout>(R.id.modelCatalog)
+        val modelCount = view.findViewById<TextView>(R.id.modelCountView)
+        val modelSearch = view.findViewById<TextInputEditText>(R.id.modelSearchInput)
+        val modelRecycler = view.findViewById<RecyclerView>(R.id.modelRecyclerView)
+        val configScroll = view.findViewById<androidx.core.widget.NestedScrollView>(R.id.configScrollView)
+        val saveButton = view.findViewById<MaterialButton>(R.id.saveConfigButton)
         val existing = configStore.load()
-        baseUrl.setText(existing.baseUrl)
-        model.setText(existing.model)
-        if (existing.apiKey.isNotBlank()) apiKey.hint = "已安全保存，留空保持不变"
+        endpoint.text = AiConfigStore.FIXED_BASE_URL
+        if (existing.apiKey.isNotBlank()) apiKey.hint = "已安全保存 · 输入新密钥可替换"
 
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("AI 模型设置")
-            .setView(view)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("保存", null)
-            .create()
+        var allModels = emptyList<AiModelOption>()
+        var selectedModel = existing.model
+        var newKeyVerified = false
+        var loadingModels = false
+        lateinit var adapter: ModelAdapter
+
+        fun updateSelectedModel(option: AiModelOption? = allModels.firstOrNull { it.id == selectedModel }) {
+            modelValue.text = selectedModel.ifBlank { "尚未选择" }
+            modelMeta.text = when {
+                selectedModel.isBlank() -> "读取列表后选择，不需要手动填写"
+                option == null -> "已保存的模型 · 读取列表可校验是否仍可用"
+                !option.supportsOpenAi -> "此模型未声明支持当前接口"
+                option.owner.isBlank() -> "OpenAI 兼容模型"
+                else -> "${option.owner} · OpenAI 兼容"
+            }
+            adapter.setSelectedModel(selectedModel)
+        }
+
+        fun showCatalog(show: Boolean) {
+            modelCatalog.visibility = if (show) View.VISIBLE else View.GONE
+            modelExpandIcon.rotation = if (show) 180f else 0f
+            if (show) configScroll.post { configScroll.smoothScrollTo(0, modelSelector.bottom) }
+        }
+
+        fun filterModels(query: String) {
+            val normalized = query.trim().lowercase()
+            val filtered = if (normalized.isBlank()) allModels else allModels.filter {
+                it.id.lowercase().contains(normalized) || it.owner.lowercase().contains(normalized)
+            }
+            modelCount.text = if (filtered.size == allModels.size) "${allModels.size} 个" else "${filtered.size} / ${allModels.size}"
+            adapter.submitList(filtered, selectedModel)
+        }
+
+        adapter = ModelAdapter { option ->
+            selectedModel = option.id
+            updateSelectedModel(option)
+            connectionStatus.text = "已选择 ${option.id}"
+            connectionStatus.setTextColor(ContextCompat.getColor(this, R.color.success_green))
+        }
+        modelRecycler.adapter = adapter
+        updateSelectedModel()
+        modelSearch.doAfterTextChanged { filterModels(it?.toString().orEmpty()) }
+
+        val dialog = BottomSheetDialog(this)
+        dialog.setContentView(view)
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         dialog.setOnShowListener {
-            DailyTaskDialogs.style(dialog)
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val url = baseUrl.text?.toString()?.trim().orEmpty()
-                val modelName = model.text?.toString()?.trim().orEmpty()
-                if (url.isNotBlank() && !url.startsWith("https://")) {
-                    "接口地址必须使用 HTTPS".show(this)
-                    return@setOnClickListener
+            val sheet = dialog.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)
+            sheet?.apply {
+                setBackgroundColor(Color.TRANSPARENT)
+                layoutParams.height = (resources.displayMetrics.heightPixels * 0.94f).toInt()
+                requestLayout()
+            }
+            sheet?.let {
+                BottomSheetBehavior.from(it).apply {
+                    state = BottomSheetBehavior.STATE_EXPANDED
+                    skipCollapsed = true
+                    isDraggable = true
                 }
-                configStore.save(url, modelName, apiKey.text?.toString()?.takeIf { it.isNotBlank() })
-                dialog.dismiss()
-                "模型设置已保存".show(this)
             }
         }
+        ViewCompat.setOnApplyWindowInsetsListener(view) { sheet, insets ->
+            sheet.setPadding(0, 0, 0, insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom)
+            insets
+        }
+
+        fun fetchModels(expandWhenReady: Boolean) {
+            if (loadingModels) return
+            val enteredKey = apiKey.text?.toString()?.trim().orEmpty()
+            val effectiveKey = enteredKey.ifBlank { existing.apiKey }
+            if (effectiveKey.isBlank()) {
+                apiKeyLayout.error = "请先填写 API Key"
+                apiKey.requestFocus()
+                return
+            }
+            apiKeyLayout.error = null
+            loadingModels = true
+            loadModels.isEnabled = false
+            loading.visibility = View.VISIBLE
+            connectionStatus.text = "正在连接接口并读取模型…"
+            connectionStatus.setTextColor(ContextCompat.getColor(this, R.color.text_secondary_dark))
+            lifecycleScope.launch {
+                try {
+                    val result = planner.fetchAvailableModels(effectiveKey)
+                    if (!dialog.isShowing) return@launch
+                    allModels = result
+                    newKeyVerified = enteredKey.isNotBlank()
+                    val matched = allModels.firstOrNull { it.id == selectedModel && it.supportsOpenAi }
+                    val recommended = matched
+                        ?: allModels.firstOrNull { it.id.equals("qwen3-max", ignoreCase = true) && it.supportsOpenAi }
+                        ?: allModels.firstOrNull { it.supportsOpenAi }
+                        ?: error("模型列表中没有支持 OpenAI 兼容接口的模型")
+                    selectedModel = recommended.id
+                    updateSelectedModel(recommended)
+                    filterModels(modelSearch.text?.toString().orEmpty())
+                    connectionStatus.text = "连接成功，已读取 ${allModels.size} 个模型"
+                    connectionStatus.setTextColor(ContextCompat.getColor(this@AiAssistantActivity, R.color.success_green))
+                    if (expandWhenReady) showCatalog(true)
+                } catch (e: Exception) {
+                    if (!dialog.isShowing) return@launch
+                    connectionStatus.text = e.message ?: "模型列表读取失败"
+                    connectionStatus.setTextColor(ContextCompat.getColor(this@AiAssistantActivity, R.color.accent_red))
+                    showCatalog(false)
+                } finally {
+                    loadingModels = false
+                    loadModels.isEnabled = true
+                    loading.visibility = View.GONE
+                }
+            }
+        }
+
+        apiKey.doAfterTextChanged {
+            if (!it.isNullOrBlank()) {
+                newKeyVerified = false
+                connectionStatus.text = "密钥已更改，请重新验证并读取模型"
+                connectionStatus.setTextColor(ContextCompat.getColor(this, R.color.warning_amber))
+            }
+        }
+        loadModels.setOnClickListener { fetchModels(expandWhenReady = true) }
+        modelSelector.setOnClickListener {
+            if (allModels.isEmpty()) fetchModels(expandWhenReady = true) else showCatalog(modelCatalog.visibility != View.VISIBLE)
+        }
+        view.findViewById<View>(R.id.closeConfigButton).setOnClickListener { dialog.dismiss() }
+        saveButton.setOnClickListener {
+            val enteredKey = apiKey.text?.toString()?.trim().orEmpty()
+            if (enteredKey.isNotBlank() && !newKeyVerified) {
+                apiKeyLayout.error = "请先验证新密钥并读取模型"
+                connectionStatus.text = "验证通过后才能保存新密钥"
+                connectionStatus.setTextColor(ContextCompat.getColor(this, R.color.warning_amber))
+                return@setOnClickListener
+            }
+            if (selectedModel.isBlank()) {
+                "请先读取并选择模型".show(this)
+                return@setOnClickListener
+            }
+            if (allModels.firstOrNull { it.id == selectedModel }?.supportsOpenAi == false) {
+                "当前模型不支持 OpenAI 兼容接口，请选择其他模型".show(this)
+                return@setOnClickListener
+            }
+            if (enteredKey.isBlank() && existing.apiKey.isBlank()) {
+                apiKeyLayout.error = "请填写并验证 API Key"
+                return@setOnClickListener
+            }
+            configStore.save(selectedModel, enteredKey.takeIf { it.isNotBlank() })
+            dialog.dismiss()
+            "模型设置已保存".show(this)
+        }
         dialog.show()
+        if (existing.apiKey.isNotBlank()) view.post { fetchModels(expandWhenReady = false) }
     }
 
     private fun addMessage(message: String, fromUser: Boolean) {
@@ -292,6 +462,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         binding.sendButton.isEnabled = !loading
         binding.sendButton.alpha = if (loading) 0.45f else 1f
         binding.promptInput.isEnabled = !loading
+        if (loading) setAssistantState(AiCompanionView.State.THINKING)
     }
 
     private fun scrollToBottom() {
@@ -300,12 +471,87 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         }
     }
 
-    private fun startOrbAnimation(view: View) {
-        view.animate().scaleX(1.08f).scaleY(1.08f).alpha(0.88f).setDuration(1400L)
-            .withEndAction {
-                view.animate().scaleX(0.96f).scaleY(0.96f).alpha(1f).setDuration(1400L)
-                    .withEndAction { startOrbAnimation(view) }.start()
-            }.start()
+    private fun setAssistantState(state: AiCompanionView.State) {
+        binding.assistantOrb.setState(state)
+        binding.headerOrb.setState(state)
+        val copy = when (state) {
+            AiCompanionView.State.IDLE -> "在这儿，随时可以开始" to "告诉我你想修改的任务、请假或设置"
+            AiCompanionView.State.AWARE -> "我在听" to "把想做的事直接说出来就好"
+            AiCompanionView.State.THINKING -> "正在整理操作" to "我会先给你核对，再执行修改"
+            AiCompanionView.State.HAPPY -> "已经处理好啦" to "修改结果已保存到本机"
+            AiCompanionView.State.ERROR -> "刚才没有接住" to "检查模型设置或换一种说法再试试"
+            AiCompanionView.State.SLEEPING -> "暂时休息中" to "点一下小球即可唤醒"
+        }
+        binding.assistantStateView.text = copy.first
+        binding.assistantStateDetailView.text = copy.second
+    }
+
+    private fun celebrateAssistant() {
+        setAssistantState(AiCompanionView.State.HAPPY)
+        binding.assistantOrb.postDelayed({
+            if (binding.sendButton.isEnabled && binding.assistantOrb.state == AiCompanionView.State.HAPPY) {
+                setAssistantState(AiCompanionView.State.IDLE)
+            }
+        }, 2600L)
+    }
+
+    private fun showAssistantError() {
+        setAssistantState(AiCompanionView.State.ERROR)
+        binding.assistantOrb.postDelayed({
+            if (binding.sendButton.isEnabled && binding.assistantOrb.state == AiCompanionView.State.ERROR) {
+                setAssistantState(AiCompanionView.State.IDLE)
+            }
+        }, 3200L)
+    }
+
+    private class ModelAdapter(
+        private val onSelected: (AiModelOption) -> Unit
+    ) : RecyclerView.Adapter<ModelAdapter.ModelViewHolder>() {
+        private var models = emptyList<AiModelOption>()
+        private var selectedModel = ""
+
+        fun submitList(items: List<AiModelOption>, selected: String) {
+            models = items
+            selectedModel = selected
+            notifyDataSetChanged()
+        }
+
+        fun setSelectedModel(selected: String) {
+            val old = models.indexOfFirst { it.id == selectedModel }
+            selectedModel = selected
+            val current = models.indexOfFirst { it.id == selectedModel }
+            if (old >= 0) notifyItemChanged(old)
+            if (current >= 0) notifyItemChanged(current)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ModelViewHolder {
+            return ModelViewHolder(
+                LayoutInflater.from(parent.context).inflate(R.layout.item_ai_model, parent, false)
+            )
+        }
+
+        override fun getItemCount() = models.size
+
+        override fun onBindViewHolder(holder: ModelViewHolder, position: Int) {
+            val model = models[position]
+            holder.name.text = model.id
+            holder.owner.text = when {
+                !model.supportsOpenAi -> "不支持当前调用接口"
+                model.owner.isBlank() -> "OpenAI 兼容"
+                else -> "${model.owner} · OpenAI 兼容"
+            }
+            holder.selected.visibility = if (model.id == selectedModel) View.VISIBLE else View.GONE
+            holder.itemView.alpha = if (model.supportsOpenAi) 1f else 0.45f
+            holder.itemView.isEnabled = model.supportsOpenAi
+            holder.itemView.contentDescription = "模型 ${model.id}${if (model.id == selectedModel) "，已选择" else ""}${if (!model.supportsOpenAi) "，不支持当前接口" else ""}"
+            holder.itemView.setOnClickListener(if (model.supportsOpenAi) View.OnClickListener { onSelected(model) } else null)
+        }
+
+        class ModelViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val name: TextView = view.findViewById(R.id.modelNameView)
+            val owner: TextView = view.findViewById(R.id.modelOwnerView)
+            val selected: ImageView = view.findViewById(R.id.modelSelectedIcon)
+        }
     }
 
     override fun finish() {

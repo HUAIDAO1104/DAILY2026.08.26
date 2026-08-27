@@ -3,7 +3,7 @@ package com.pengxh.daily.app.adapter
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.TextView
+import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
@@ -52,21 +52,23 @@ class DailyTaskAdapter(private val dataBeans: MutableList<DailyTaskBean>) :
         val taskBean = dataBeans[position]
         holder.setText(R.id.taskTimeView, taskBean.time.take(5))
         holder.setText(R.id.taskNameView, taskBean.displayName())
-        val taskMarkView = holder.getView<TextView>(R.id.taskMarkView)
+        val taskMarkView = holder.getView<ImageView>(R.id.taskMarkView)
         if (position == mPosition) {
             holder.itemView.isSelected = true
             val context = holder.itemView.context
             holder.setText(R.id.actualTimeView, "正在等待执行结果 · $actualTime")
                 .setTextColor(R.id.actualTimeView, R.color.accent_red.convertColor(context))
                 .setTextColor(R.id.taskTimeView, R.color.accent_red.convertColor(context))
-            taskMarkView.text = "··"
+            taskMarkView.setImageResource(R.drawable.ic_task_running_modern)
+            taskMarkView.contentDescription = "任务正在执行"
             taskMarkView.setBackgroundResource(R.drawable.bg_circle_red_soft)
         } else {
             holder.itemView.isSelected = false
             holder.setText(R.id.actualTimeView, if (taskBean.isEnabled) "随机时间 · 点击编辑" else "已停用 · 点击编辑")
                 .setTextColor(R.id.actualTimeView, R.color.text_secondary_dark.convertColor(holder.itemView.context))
                 .setTextColor(R.id.taskTimeView, R.color.text_primary_dark.convertColor(holder.itemView.context))
-            taskMarkView.text = if (taskBean.isEnabled) "" else "—"
+            taskMarkView.setImageResource(if (taskBean.isEnabled) 0 else R.drawable.ic_task_paused_modern)
+            taskMarkView.contentDescription = if (taskBean.isEnabled) "任务已启用" else "任务已停用"
             taskMarkView.setBackgroundResource(R.drawable.bg_circle_outline)
         }
 

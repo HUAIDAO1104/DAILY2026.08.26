@@ -200,7 +200,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                         R.color.accent_red_soft.convertColor(this@MainActivity)
                     )
                     binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
-                    binding.executeTaskButton.text = "●  实时 · 停止"
+                    binding.executeTaskButton.text = "实时 · 停止"
                 } else {
                     runningStartedAt = 0L
                     dailyTaskAdapter.updateCurrentTaskState(-1)
@@ -208,7 +208,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                         R.color.accent_red_soft.convertColor(this@MainActivity)
                     )
                     binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
-                    binding.executeTaskButton.text = "●  已就绪"
+                    binding.executeTaskButton.text = "已就绪"
                 }
                 updateHomeSummary()
             }
@@ -597,7 +597,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                 val random = SaveKeyValues.loadBoolean(Constant.RANDOM_TIME_KEY, true)
                 binding.repeatTimeView.text = if (next == null) "等待明日任务" else if (random) "随机 ±$range 分钟" else "按计划时间执行"
                 binding.tipsView.text = if (next == null) "今天已无待执行时间" else "通知、权限与日期规则已检查"
-                binding.executeTaskButton.text = "●  已就绪"
+                binding.executeTaskButton.text = "已就绪"
                 binding.executeTaskButton.isEnabled = enabledTasks.isNotEmpty()
                 binding.aiInsightNoteView.text = if (enabledTasks.isEmpty()) "还没有任务，添加后即可开始" else "权限、网络与日期规则正常，可按时执行"
             }

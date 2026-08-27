@@ -31,16 +31,16 @@
             app:title="打卡日历"
             app:titleTextColor="@color/text_primary_dark">
 
-            <TextView
+            <ImageButton
                 android:id="@+id/addLeaveButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:layout_gravity="end"
                 android:background="@drawable/bg_circle_glass"
-                android:gravity="center"
-                android:text="＋"
-                android:textColor="@color/accent_red"
-                android:textSize="22sp" />
+                android:contentDescription="添加请假"
+                android:padding="12dp"
+                android:src="@drawable/ic_plus_round"
+                app:tint="@color/accent_red" />
         </com.google.android.material.appbar.MaterialToolbar>
 
         <androidx.core.widget.NestedScrollView
@@ -87,26 +87,26 @@
                             android:textSize="14sp" />
                     </LinearLayout>
 
-                    <TextView
+                    <ImageButton
                         android:id="@+id/previousMonthButton"
                         android:layout_width="44dp"
                         android:layout_height="44dp"
                         android:background="@drawable/bg_circle_glass"
-                        android:gravity="center"
-                        android:text="‹"
-                        android:textColor="@color/text_primary_dark"
-                        android:textSize="26sp" />
+                        android:contentDescription="上个月"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_chevron_left_modern"
+                        app:tint="@color/text_primary_dark" />
 
-                    <TextView
+                    <ImageButton
                         android:id="@+id/nextMonthButton"
                         android:layout_width="44dp"
                         android:layout_height="44dp"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_circle_glass"
-                        android:gravity="center"
-                        android:text="›"
-                        android:textColor="@color/text_primary_dark"
-                        android:textSize="26sp" />
+                        android:contentDescription="下个月"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_chevron_right_modern"
+                        app:tint="@color/text_primary_dark" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -140,17 +140,23 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="●  请假"
+                        android:drawablePadding="6dp"
+                        android:text="请假"
                         android:textColor="@color/accent_red"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        app:drawableStartCompat="@drawable/ic_status_dot"
+                        app:drawableTint="@color/accent_red" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="18dp"
-                        android:text="●  周末/节假日"
+                        android:drawablePadding="6dp"
+                        android:text="周末/节假日"
                         android:textColor="@color/text_tertiary_dark"
-                        android:textSize="12sp" />
+                        android:textSize="12sp"
+                        app:drawableStartCompat="@drawable/ic_status_dot"
+                        app:drawableTint="@color/text_tertiary_dark" />
                 </LinearLayout>
 
                 <LinearLayout

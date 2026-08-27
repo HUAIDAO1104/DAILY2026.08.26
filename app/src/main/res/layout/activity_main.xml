@@ -39,15 +39,14 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <TextView
+                <ImageView
                     android:layout_width="34dp"
                     android:layout_height="34dp"
                     android:background="@drawable/bg_red_gradient_button"
-                    android:gravity="center"
-                    android:text="DT"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:contentDescription="DailyTask"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_app_mark"
+                    app:tint="@color/white" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -59,7 +58,7 @@
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
-                <TextView
+                <ImageButton
                     android:id="@+id/addTaskButton"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
@@ -67,10 +66,9 @@
                     android:clickable="true"
                     android:contentDescription="添加任务"
                     android:focusable="true"
-                    android:gravity="center"
-                    android:text="＋"
-                    android:textColor="@color/accent_red"
-                    android:textSize="22sp" />
+                    android:padding="12dp"
+                    android:src="@drawable/ic_plus_round"
+                    app:tint="@color/accent_red" />
 
                 <LinearLayout
                     android:id="@+id/aiTopButton"
@@ -85,11 +83,11 @@
                     android:paddingStart="6dp"
                     android:paddingEnd="10dp">
 
-                    <View
+                    <com.pengxh.daily.app.widget.AiCompanionView
                         android:id="@+id/aiTopOrb"
                         android:layout_width="25dp"
                         android:layout_height="25dp"
-                        android:background="@drawable/bg_ai_orb" />
+                        android:importantForAccessibility="no" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -180,12 +178,15 @@
                                 android:insetBottom="0dp"
                                 android:minWidth="76dp"
                                 android:minHeight="40dp"
-                                android:text="●  已就绪"
+                                android:text="已就绪"
                                 android:textAllCaps="false"
                                 android:textColor="@color/accent_red"
                                 android:textSize="12sp"
                                 app:backgroundTint="@color/accent_red_soft"
-                                app:cornerRadius="17dp" />
+                                app:cornerRadius="17dp"
+                                app:icon="@drawable/ic_status_dot"
+                                app:iconSize="10dp"
+                                app:iconTint="@color/accent_red" />
                         </LinearLayout>
 
                         <TextView
@@ -273,11 +274,11 @@
                     android:orientation="horizontal"
                     android:paddingHorizontal="13dp">
 
-                    <View
+                    <com.pengxh.daily.app.widget.AiCompanionView
                         android:id="@+id/aiInsightOrb"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
-                        android:background="@drawable/bg_ai_orb" />
+                        android:importantForAccessibility="no" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -375,14 +376,14 @@
                         android:paddingHorizontal="16dp"
                         android:visibility="gone">
 
-                        <TextView
+                        <ImageView
                             android:layout_width="34dp"
                             android:layout_height="34dp"
                             android:background="@drawable/bg_circle_red_soft"
-                            android:gravity="center"
-                            android:text="＋"
-                            android:textColor="@color/accent_red"
-                            android:textSize="18sp" />
+                            android:importantForAccessibility="no"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_plus_round"
+                            app:tint="@color/accent_red" />
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -403,7 +404,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="点击右上角 ＋ 添加第一个时间点"
+                                android:text="点击右上角添加按钮，创建第一个时间点"
                                 android:textColor="@color/text_secondary_dark"
                                 android:textSize="12sp" />
                         </LinearLayout>
@@ -424,10 +425,10 @@
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
 
-                    <View
+                    <com.pengxh.daily.app.widget.AiCompanionView
                         android:layout_width="28dp"
                         android:layout_height="28dp"
-                        android:background="@drawable/bg_ai_orb" />
+                        android:importantForAccessibility="no" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -438,12 +439,12 @@
                         android:textColor="@color/text_secondary_dark"
                         android:textSize="14sp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="⌁"
-                        android:textColor="#A6FFFFFF"
-                        android:textSize="17sp" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="打开 AI 助手"
+                        android:src="@drawable/ic_prompt_arrow_modern"
+                        app:tint="@color/text_secondary_dark" />
                 </LinearLayout>
 
                 <TextView
