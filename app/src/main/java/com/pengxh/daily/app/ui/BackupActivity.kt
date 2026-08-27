@@ -9,11 +9,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.JsonParser
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.databinding.ActivityBackupBinding
 import com.pengxh.daily.app.utils.ConfigSnapshotManager
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.convertColor
 import com.pengxh.kt.lite.extensions.dp2px
@@ -80,7 +80,7 @@ class BackupActivity : KotlinBaseActivity<ActivityBackupBinding>() {
             addView(TextView(this@BackupActivity).apply {
                 text = version.ifBlank { "配置" }
                 gravity = Gravity.CENTER
-                textSize = 9f
+                textSize = 12f
                 setTextColor(R.color.accent_red.convertColor(this@BackupActivity))
                 setBackgroundResource(R.drawable.bg_circle_red_soft)
             }, LinearLayout.LayoutParams(42.dp2px(this@BackupActivity), 42.dp2px(this@BackupActivity)))
@@ -89,20 +89,21 @@ class BackupActivity : KotlinBaseActivity<ActivityBackupBinding>() {
                 addView(TextView(this@BackupActivity).apply {
                     text = SimpleDateFormat("M月d日 HH:mm", Locale.CHINA).format(Date(file.lastModified()))
                     setTextColor(R.color.text_primary_dark.convertColor(this@BackupActivity))
-                    textSize = 13f
+                    textSize = 15f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                 })
                 addView(TextView(this@BackupActivity).apply {
                     text = reason
                     setTextColor(R.color.text_secondary_dark.convertColor(this@BackupActivity))
-                    textSize = 9f
+                    textSize = 13f
+                    maxLines = 2
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = 4.dp2px(this@BackupActivity) })
             }
             addView(copy, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = 12.dp2px(this@BackupActivity) })
             addView(TextView(this@BackupActivity).apply {
                 text = "恢复"
                 setTextColor(R.color.accent_red.convertColor(this@BackupActivity))
-                textSize = 11f
+                textSize = 14f
                 setTypeface(null, android.graphics.Typeface.BOLD)
             })
             setOnClickListener { confirmRestore(file, reason) }
@@ -110,18 +111,19 @@ class BackupActivity : KotlinBaseActivity<ActivityBackupBinding>() {
     }
 
     private fun confirmRestore(file: File, reason: String) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("恢复这份配置？")
-            .setMessage("将恢复“$reason”。恢复前会自动备份当前配置，任务、请假和设置会切换到所选版本。")
-            .setNegativeButton("取消", null)
-            .setPositiveButton("确认恢复") { _, _ ->
-                lifecycleScope.launch {
-                    withContext(Dispatchers.IO) {
-                        ConfigSnapshotManager.restoreWithBackup(this@BackupActivity, file)
-                    }
-                    "配置恢复完成".show(this@BackupActivity)
-                    renderBackups()
+        DailyTaskDialogs.showConfirm(
+            this,
+            "恢复这份配置？",
+            "将恢复“$reason”。恢复前会自动备份当前配置，任务、请假和设置会切换到所选版本。",
+            "确认恢复"
+        ) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    ConfigSnapshotManager.restoreWithBackup(this@BackupActivity, file)
                 }
-            }.show()
+                "配置恢复完成".show(this@BackupActivity)
+                renderBackups()
+            }
+        }
     }
 }

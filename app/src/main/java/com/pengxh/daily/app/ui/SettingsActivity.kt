@@ -26,6 +26,7 @@ import com.pengxh.daily.app.utils.ChinaHolidayManager
 import com.pengxh.daily.app.utils.AppUpdateInfo
 import com.pengxh.daily.app.utils.AppUpdateManager
 import com.pengxh.daily.app.utils.Constant
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.MessageDispatcher
 import com.pengxh.daily.app.utils.ProjectionEvent
 import com.pengxh.daily.app.utils.ProjectionSession
@@ -36,7 +37,6 @@ import com.pengxh.kt.lite.extensions.navigatePageTo
 import com.pengxh.kt.lite.extensions.show
 import com.pengxh.kt.lite.utils.LoadingDialog
 import com.pengxh.kt.lite.utils.SaveKeyValues
-import com.pengxh.kt.lite.widget.dialog.BottomActionSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -174,55 +174,49 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
 
     override fun initEvent() {
         binding.targetAppLayout.setOnClickListener {
-            BottomActionSheet.Builder()
-                .setContext(this)
-                .setActionItemTitle(apps)
-                .setItemTextColor(R.color.theme_color.convertColor(this))
-                .setOnActionSheetListener(object : BottomActionSheet.OnActionSheetListener {
-                    override fun onActionItemClick(position: Int) {
-                        val oldPosition = SaveKeyValues.loadInt(Constant.TARGET_APP_KEY, 0)
+            DailyTaskDialogs.showChoice(
+                this,
+                "选择目标应用",
+                apps,
+                SaveKeyValues.loadInt(Constant.TARGET_APP_KEY, 0)
+            ) { position ->
+                val oldPosition = SaveKeyValues.loadInt(Constant.TARGET_APP_KEY, 0)
+                if (oldPosition == position) {
+                    binding.iconView.setBackgroundResource(icons[position])
+                    return@showChoice
+                }
 
-                        // 如果 position 没有变化，直接返回
-                        if (oldPosition == position) {
-                            binding.iconView.setBackgroundResource(icons[position])
-                            return
+                when (position) {
+                    0 -> {
+                        if (binding.noticeSwitch.isChecked) {
+                            binding.noticeRadioButton.isChecked = true
+                            SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 0)
+                            binding.captureRadioButton.isChecked = false
+                        } else if (binding.captureSwitch.isChecked) {
+                            binding.captureRadioButton.isChecked = true
+                            SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 1)
+                            binding.noticeRadioButton.isChecked = false
+                        } else {
+                            "请先打开通知监听或截屏服务".show(context)
+                            return@showChoice
                         }
-
-                        when (position) {
-                            0 -> {
-                                // 钉钉：默认通知监听，通知未开则降级截屏，两者都未开则阻断
-                                if (binding.noticeSwitch.isChecked) {
-                                    binding.noticeRadioButton.isChecked = true
-                                    SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 0)
-                                    binding.captureRadioButton.isChecked = false
-                                } else if (binding.captureSwitch.isChecked) {
-                                    binding.captureRadioButton.isChecked = true
-                                    SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 1)
-                                    binding.noticeRadioButton.isChecked = false
-                                } else {
-                                    "请先打开通知监听或截屏服务".show(context)
-                                    return
-                                }
-                            }
-
-                            1, 2, 3 -> {
-                                // 企业微信、飞书、移动办公M3：只能截屏
-                                if (binding.captureSwitch.isChecked) {
-                                    binding.captureRadioButton.isChecked = true
-                                    SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 1)
-                                    binding.noticeRadioButton.isChecked = false
-                                } else {
-                                    "请先打开截屏服务".show(context)
-                                    return
-                                }
-                            }
-                        }
-
-                        // 只有通过所有校验后才写入配置
-                        binding.iconView.setBackgroundResource(icons[position])
-                        SaveKeyValues.saveInt(Constant.TARGET_APP_KEY, position)
                     }
-                }).build().show()
+
+                    1, 2, 3 -> {
+                        if (binding.captureSwitch.isChecked) {
+                            binding.captureRadioButton.isChecked = true
+                            SaveKeyValues.saveInt(Constant.RESULT_SOURCE_KEY, 1)
+                            binding.noticeRadioButton.isChecked = false
+                        } else {
+                            "请先打开截屏服务".show(context)
+                            return@showChoice
+                        }
+                    }
+                }
+
+                binding.iconView.setBackgroundResource(icons[position])
+                SaveKeyValues.saveInt(Constant.TARGET_APP_KEY, position)
+            }
         }
 
         binding.msgChannelLayout.setOnClickListener {
@@ -584,25 +578,20 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
     }
 
     private fun showUpdateDialog(info: AppUpdateInfo) {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("发现新版本 ${info.version}")
-            .setMessage(info.notes.ifBlank { "修复问题并改进使用体验。" })
-            .setNegativeButton("稍后", null)
-            .setPositiveButton("备份并更新") { _, _ ->
-                lifecycleScope.launch {
-                    LoadingDialog.show(this@SettingsActivity, "正在下载更新...")
-                    try {
-                        val apk = AppUpdateManager.download(this@SettingsActivity, info)
-                        LoadingDialog.dismiss()
-                        if (!AppUpdateManager.installOrRequestPermission(this@SettingsActivity, apk)) {
-                            "请允许安装更新，返回后会继续".show(this@SettingsActivity)
-                        }
-                    } catch (e: Exception) {
-                        LoadingDialog.dismiss()
-                        (e.message ?: "更新下载失败").show(this@SettingsActivity)
+        DailyTaskDialogs.showUpdate(this, info) {
+            lifecycleScope.launch {
+                LoadingDialog.show(this@SettingsActivity, "正在下载更新...")
+                try {
+                    val apk = AppUpdateManager.download(this@SettingsActivity, info)
+                    LoadingDialog.dismiss()
+                    if (!AppUpdateManager.installOrRequestPermission(this@SettingsActivity, apk)) {
+                        "请允许安装更新，返回后会继续".show(this@SettingsActivity)
                     }
+                } catch (e: Exception) {
+                    LoadingDialog.dismiss()
+                    (e.message ?: "更新下载失败").show(this@SettingsActivity)
                 }
             }
-            .show()
+        }
     }
 }

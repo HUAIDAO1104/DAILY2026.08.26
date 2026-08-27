@@ -111,7 +111,7 @@ class ExecutionRecordsActivity : KotlinBaseActivity<ActivityExecutionRecordsBind
             else -> "${date.monthValue}月${date.dayOfMonth}日"
         }
         setTextColor(R.color.text_tertiary_dark.convertColor(this@ExecutionRecordsActivity))
-        textSize = 10f
+        textSize = 12f
         setPadding(4.dp2px(this@ExecutionRecordsActivity), 18.dp2px(this@ExecutionRecordsActivity), 0, 8.dp2px(this@ExecutionRecordsActivity))
     }
 
@@ -119,7 +119,7 @@ class ExecutionRecordsActivity : KotlinBaseActivity<ActivityExecutionRecordsBind
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(14.dp2px(this@ExecutionRecordsActivity), 0, 12.dp2px(this@ExecutionRecordsActivity), 0)
-        minimumHeight = 68.dp2px(this@ExecutionRecordsActivity)
+        minimumHeight = 72.dp2px(this@ExecutionRecordsActivity)
         val success = record.status == ExecutionRecordManager.SUCCESS
         val mark = TextView(this@ExecutionRecordsActivity).apply {
             gravity = Gravity.CENTER
@@ -137,14 +137,14 @@ class ExecutionRecordsActivity : KotlinBaseActivity<ActivityExecutionRecordsBind
             addView(TextView(this@ExecutionRecordsActivity).apply {
                 text = record.taskName.orEmpty().ifBlank { "任务记录" }
                 setTextColor(R.color.text_primary_dark.convertColor(this@ExecutionRecordsActivity))
-                textSize = 13f
+                textSize = 14f
                 setTypeface(null, android.graphics.Typeface.BOLD)
             })
             addView(TextView(this@ExecutionRecordsActivity).apply {
                 text = listOf(record.actualTime.orEmpty().take(5), record.detail.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ")
                 setTextColor(R.color.text_secondary_dark.convertColor(this@ExecutionRecordsActivity))
-                textSize = 9f
-                maxLines = 1
+                textSize = 13f
+                maxLines = 2
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = 4.dp2px(this@ExecutionRecordsActivity) })
         }
         addView(copy, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = 12.dp2px(this@ExecutionRecordsActivity) })

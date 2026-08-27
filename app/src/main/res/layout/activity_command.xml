@@ -4,7 +4,7 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
         <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@android:color/transparent" android:contentInsetStartWithNavigation="4dp" android:minHeight="56dp" app:navigationIcon="@drawable/ic_back_modern" app:title="远程控制" app:titleTextColor="@color/text_primary_dark" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="19dp" android:layout_marginTop="10dp" android:text="可用指令" android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="19dp" android:layout_marginTop="7dp" android:text="点击任意指令即可复制，然后从已配置的消息渠道发送。" android:textColor="@color/text_secondary_dark" android:textSize="11sp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="19dp" android:layout_marginTop="7dp" android:text="点击任意指令即可复制，然后从已配置的消息渠道发送。" android:textColor="@color/text_secondary_dark" android:textSize="14sp" />
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerView" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="14dp" android:layout_weight="1" android:clipToPadding="false" android:overScrollMode="never" android:paddingHorizontal="19dp" android:paddingBottom="24dp" app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
     </LinearLayout>
 </FrameLayout>

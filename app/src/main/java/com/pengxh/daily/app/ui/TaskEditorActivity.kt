@@ -1,16 +1,17 @@
 package com.pengxh.daily.app.ui
 
-import android.app.TimePickerDialog
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import com.pengxh.daily.app.databinding.ActivityTaskEditorBinding
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.displayName
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.show
@@ -49,13 +50,35 @@ class TaskEditorActivity : KotlinBaseActivity<ActivityTaskEditorBinding>() {
     }
     override fun initEvent() {
         binding.timeLayout.setOnClickListener {
-            TimePickerDialog(this, { _, hour, minute -> selectedTime = LocalTime.of(hour, minute); renderTime() }, selectedTime.hour, selectedTime.minute, true).show()
+            val picker = MaterialTimePicker.Builder()
+                .setTimeFormat(TimeFormat.CLOCK_24H)
+                .setInputMode(MaterialTimePicker.INPUT_MODE_CLOCK)
+                .setHour(selectedTime.hour)
+                .setMinute(selectedTime.minute)
+                .setTitleText("选择计划时间")
+                .setPositiveButtonText("确定")
+                .setNegativeButtonText("取消")
+                .build()
+            picker.addOnPositiveButtonClickListener {
+                selectedTime = LocalTime.of(picker.hour, picker.minute)
+                renderTime()
+            }
+            picker.show(supportFragmentManager, "task_time_picker")
         }
         binding.saveButton.setOnClickListener { saveTask() }
         binding.deleteButton.setOnClickListener {
             val current = task ?: return@setOnClickListener
-            MaterialAlertDialogBuilder(this).setTitle("删除任务？").setMessage("历史执行记录不会受到影响。")
-                .setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> lifecycleScope.launch { withContext(Dispatchers.IO) { DatabaseWrapper.deleteTask(current) }; finish() } }.show()
+            DailyTaskDialogs.showConfirm(
+                this,
+                "删除这个任务？",
+                "删除后不会再执行，历史记录仍会保留。",
+                "删除"
+            ) {
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) { DatabaseWrapper.deleteTask(current) }
+                    finish()
+                }
+            }
         }
     }
     private fun renderTime() { binding.timeView.text = selectedTime.format(DateTimeFormatter.ofPattern("HH:mm")) }

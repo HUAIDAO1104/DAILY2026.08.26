@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.util.Log
 import android.view.View
 import androidx.core.view.ViewCompat
@@ -21,15 +22,12 @@ import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
 import com.pengxh.daily.app.utils.ConfigStore
 import com.pengxh.daily.app.utils.Constant
 import com.pengxh.daily.app.utils.CustomWorkdayManager
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.FloatingWindowController
 import com.pengxh.kt.lite.base.KotlinBaseActivity
-import com.pengxh.kt.lite.extensions.convertColor
-import com.pengxh.kt.lite.extensions.isNumber
 import com.pengxh.kt.lite.extensions.show
 import com.pengxh.kt.lite.extensions.toJson
 import com.pengxh.kt.lite.utils.SaveKeyValues
-import com.pengxh.kt.lite.widget.dialog.AlertInputDialog
-import com.pengxh.kt.lite.widget.dialog.BottomActionSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,9 +37,10 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
 
     private val kTag = "TaskConfigActivity"
     private val context = this
-    private val hourArray = arrayListOf("0", "1", "2", "3", "4", "5", "6", "自定义（单位：时）")
-    private val timeArray = arrayListOf("15", "30", "45", "自定义（单位：秒）")
-    private val optionArray = arrayListOf("QQ", "微信", "TIM", "支付宝", "剪切板")
+    private val hourOptions = listOf("00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "自定义时间")
+    private val timeoutOptions = listOf("15 秒", "30 秒", "45 秒", "自定义时长")
+    private val timeoutValues = listOf(15, 30, 45)
+    private val shareOptions = listOf("QQ", "微信", "TIM", "支付宝", "复制到剪贴板")
     private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
 
     override fun initViewBinding(): ActivityTaskConfigBinding {
@@ -92,45 +91,37 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
 
     override fun initEvent() {
         binding.resetTimeLayout.setOnClickListener {
-            BottomActionSheet.Builder()
-                .setContext(this)
-                .setActionItemTitle(hourArray)
-                .setItemTextColor(R.color.theme_color.convertColor(this))
-                .setOnActionSheetListener(object : BottomActionSheet.OnActionSheetListener {
-                    override fun onActionItemClick(position: Int) {
-                        setHourByPosition(position)
-                    }
-                }).build().show()
+            val current = SaveKeyValues.loadInt(Constant.RESET_TIME_KEY, Constant.DEFAULT_RESET_HOUR)
+            DailyTaskDialogs.showChoice(
+                this,
+                "每天几点重置任务",
+                hourOptions,
+                current.takeIf { it in 0..6 } ?: hourOptions.lastIndex
+            ) { setHourByPosition(it) }
         }
 
         binding.timeoutLayout.setOnClickListener {
-            BottomActionSheet.Builder()
-                .setContext(this)
-                .setActionItemTitle(timeArray)
-                .setItemTextColor(R.color.theme_color.convertColor(this))
-                .setOnActionSheetListener(object : BottomActionSheet.OnActionSheetListener {
-                    override fun onActionItemClick(position: Int) {
-                        setTimeByPosition(position)
-                    }
-                }).build().show()
+            val current = SaveKeyValues.loadInt(Constant.STAY_OVERTIME_KEY, Constant.DEFAULT_OVER_TIME)
+            DailyTaskDialogs.showChoice(
+                this,
+                "等待结果的时长",
+                timeoutOptions,
+                timeoutValues.indexOf(current).takeIf { it >= 0 } ?: timeoutOptions.lastIndex
+            ) { setTimeByPosition(it) }
         }
 
         binding.keyLayout.setOnClickListener {
-            AlertInputDialog.Builder()
-                .setContext(this)
-                .setTitle("设置打卡口令")
-                .setHintMessage("请输入打卡口令，如：打卡")
-                .setNegativeButton("取消")
-                .setPositiveButton("确定")
-                .setOnDialogButtonClickListener(object :
-                    AlertInputDialog.OnDialogButtonClickListener {
-                    override fun onConfirmClick(value: String) {
-                        SaveKeyValues.saveString(Constant.REMOTE_COMMAND_KEY, value)
-                        binding.keyTextView.text = value
-                    }
-
-                    override fun onCancelClick() {}
-                }).build().show()
+            DailyTaskDialogs.showTextInput(
+                context = this,
+                title = "设置打卡口令",
+                label = "口令",
+                description = "收到包含该口令的远程消息后执行打卡。",
+                initialValue = SaveKeyValues.loadString(Constant.REMOTE_COMMAND_KEY, "打卡"),
+                validator = { if (it.isBlank()) "口令不能为空" else null }
+            ) { value ->
+                SaveKeyValues.saveString(Constant.REMOTE_COMMAND_KEY, value)
+                binding.keyTextView.text = value
+            }
         }
 
         binding.workdayLayout.setOnClickListener {
@@ -154,24 +145,24 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
         }
 
         binding.minuteRangeLayout.setOnClickListener {
-            AlertInputDialog.Builder()
-                .setContext(this)
-                .setTitle("设置随机时间范围")
-                .setHintMessage("请输入整数，如：30")
-                .setNegativeButton("取消")
-                .setPositiveButton("确定")
-                .setOnDialogButtonClickListener(object :
-                    AlertInputDialog.OnDialogButtonClickListener {
-                    override fun onConfirmClick(value: String) {
-                        if (value.isNumber()) {
-                            updateRandomMinuteRange(value.toInt())
-                        } else {
-                            "直接输入整数时间即可".show(context)
-                        }
+            DailyTaskDialogs.showTextInput(
+                context = this,
+                title = "随机时间范围",
+                label = "分钟",
+                description = "任务会在计划时间前后这个范围内随机执行。",
+                initialValue = SaveKeyValues.loadInt(
+                    Constant.TIME_RANGE_KEY,
+                    Constant.DEFAULT_TIME_RANGE
+                ).toString(),
+                inputType = InputType.TYPE_CLASS_NUMBER,
+                validator = { value ->
+                    when {
+                        value.toIntOrNull() == null -> "请输入整数分钟"
+                        value.toInt() < 0 -> "不能小于 0 分钟"
+                        else -> null
                     }
-
-                    override fun onCancelClick() {}
-                }).build().show()
+                }
+            ) { updateRandomMinuteRange(it.toInt()) }
         }
 
         binding.exportLayout.setOnClickListener {
@@ -232,25 +223,23 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
                 Log.d(kTag, json)
 
                 // 分享
-                BottomActionSheet.Builder()
-                    .setContext(this@TaskConfigActivity)
-                    .setActionItemTitle(optionArray)
-                    .setItemTextColor(R.color.theme_color.convertColor(this@TaskConfigActivity))
-                    .setOnActionSheetListener(object : BottomActionSheet.OnActionSheetListener {
-                        override fun onActionItemClick(position: Int) {
-                            when (position) {
-                                0 -> shareTextTo(Constant.QQ, "QQ", json)
-                                1 -> shareTextTo(Constant.WECHAT, "微信", json)
-                                2 -> shareTextTo(Constant.TIM, "TIM", json)
-                                3 -> shareTextTo(Constant.ZFB, "支付宝", json)
-                                4 -> {
-                                    val cipData = ClipData.newPlainText("TaskConfig", json)
-                                    clipboard.setPrimaryClip(cipData)
-                                    "已复制到剪切板".show(context)
-                                }
-                            }
+                DailyTaskDialogs.showChoice(
+                    this@TaskConfigActivity,
+                    "导出到",
+                    shareOptions
+                ) { position ->
+                    when (position) {
+                        0 -> shareTextTo(Constant.QQ, "QQ", json)
+                        1 -> shareTextTo(Constant.WECHAT, "微信", json)
+                        2 -> shareTextTo(Constant.TIM, "TIM", json)
+                        3 -> shareTextTo(Constant.ZFB, "支付宝", json)
+                        4 -> {
+                            val cipData = ClipData.newPlainText("TaskConfig", json)
+                            clipboard.setPrimaryClip(cipData)
+                            "已复制到剪贴板".show(context)
                         }
-                    }).build().show()
+                    }
+                }
             }
         }
     }
@@ -261,7 +250,7 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
         val labels = orderedDays.map { CustomWorkdayManager.getDayLabel(it) }.toTypedArray()
         val checkedItems = orderedDays.map { it in selectedDays }.toBooleanArray()
 
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle("选择工作日")
             .setMultiChoiceItems(labels, checkedItems) { _, which, isChecked ->
                 val day = orderedDays[which]
@@ -272,17 +261,23 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
                 }
             }
             .setNegativeButton("取消", null)
-            .setPositiveButton("确定") { _, _ ->
+            .setPositiveButton("保存", null)
+            .create()
+        dialog.setOnShowListener {
+            DailyTaskDialogs.style(dialog)
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 if (selectedDays.isEmpty()) {
                     "至少保留一天为工作日".show(this)
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
 
                 val normalized = orderedDays.filter { it in selectedDays }.toSet()
                 CustomWorkdayManager.saveWorkdays(normalized)
                 updateCustomWorkdaySummary(normalized)
+                dialog.dismiss()
             }
-            .show()
+        }
+        dialog.show()
     }
 
     private fun updateCustomWorkdaySummary(workdays: Set<DayOfWeek>) {
@@ -290,27 +285,24 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
     }
 
     private fun setHourByPosition(position: Int) {
-        if (position == hourArray.size - 1) {
-            AlertInputDialog.Builder()
-                .setContext(this)
-                .setTitle("设置重置时间")
-                .setHintMessage("直接输入整数时间即可，如：6")
-                .setNegativeButton("取消")
-                .setPositiveButton("确定")
-                .setOnDialogButtonClickListener(object :
-                    AlertInputDialog.OnDialogButtonClickListener {
-                    override fun onConfirmClick(value: String) {
-                        if (value.isNumber()) {
-                            updateResetHour(value.toInt())
-                        } else {
-                            "直接输入整数时间即可".show(context)
-                        }
-                    }
-
-                    override fun onCancelClick() {}
-                }).build().show()
+        if (position == hourOptions.lastIndex) {
+            DailyTaskDialogs.showTextInput(
+                context = this,
+                title = "自定义重置时间",
+                label = "小时（0–23）",
+                description = "每天到这个整点后，任务状态会进入新的一天。",
+                initialValue = SaveKeyValues.loadInt(
+                    Constant.RESET_TIME_KEY,
+                    Constant.DEFAULT_RESET_HOUR
+                ).toString(),
+                inputType = InputType.TYPE_CLASS_NUMBER,
+                validator = { value ->
+                    val hour = value.toIntOrNull()
+                    if (hour == null || hour !in 0..23) "请输入 0–23 之间的整数" else null
+                }
+            ) { updateResetHour(it.toInt()) }
         } else {
-            updateResetHour(hourArray[position].toInt())
+            updateResetHour(position)
         }
     }
 
@@ -330,27 +322,23 @@ class TaskConfigActivity : KotlinBaseActivity<ActivityTaskConfigBinding>() {
     }
 
     private fun setTimeByPosition(position: Int) {
-        if (position == timeArray.size - 1) {
-            AlertInputDialog.Builder()
-                .setContext(this)
-                .setTitle("设置超时时间")
-                .setHintMessage("直接输入整数时间即可，如：60")
-                .setNegativeButton("取消")
-                .setPositiveButton("确定")
-                .setOnDialogButtonClickListener(object :
-                    AlertInputDialog.OnDialogButtonClickListener {
-                    override fun onConfirmClick(value: String) {
-                        if (value.isNumber()) {
-                            updateTimeout(value.toInt())
-                        } else {
-                            "直接输入整数时间即可".show(context)
-                        }
-                    }
-
-                    override fun onCancelClick() {}
-                }).build().show()
+        if (position == timeoutOptions.lastIndex) {
+            DailyTaskDialogs.showTextInput(
+                context = this,
+                title = "自定义等待时长",
+                label = "秒数",
+                description = "打开目标应用后，最长等待结果通知的时间。",
+                initialValue = SaveKeyValues.loadInt(
+                    Constant.STAY_OVERTIME_KEY,
+                    Constant.DEFAULT_OVER_TIME
+                ).toString(),
+                inputType = InputType.TYPE_CLASS_NUMBER,
+                validator = { value ->
+                    if ((value.toIntOrNull() ?: 0) <= 0) "请输入大于 0 的整数" else null
+                }
+            ) { updateTimeout(it.toInt()) }
         } else {
-            updateTimeout(timeArray[position].toInt())
+            updateTimeout(timeoutValues[position])
         }
     }
 

@@ -1,6 +1,5 @@
 package com.pengxh.daily.app.ui
 
-import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.EditText
@@ -12,10 +11,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.databinding.ActivityLeaveManagementBinding
 import com.pengxh.daily.app.sqlite.bean.LeaveRecordBean
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.LeaveManager
 import com.pengxh.daily.app.utils.LeavePeriod
 import com.pengxh.kt.lite.base.KotlinBaseActivity
@@ -24,7 +25,9 @@ import com.pengxh.kt.lite.extensions.show
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 class LeaveManagementActivity : KotlinBaseActivity<ActivityLeaveManagementBinding>() {
     override fun initViewBinding() = ActivityLeaveManagementBinding.inflate(layoutInflater)
@@ -46,12 +49,12 @@ class LeaveManagementActivity : KotlinBaseActivity<ActivityLeaveManagementBindin
     override fun initEvent() {
         binding.addLeaveButton.setOnClickListener { showAddLeaveDialog() }
         binding.todayLeaveButton.setOnClickListener {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("今天全天请假？")
-                .setMessage("今天剩余的打卡任务将不会执行。")
-                .setNegativeButton("取消", null)
-                .setPositiveButton("确认请假") { _, _ -> addQuickLeave(LocalDate.now()) }
-                .show()
+            DailyTaskDialogs.showConfirm(
+                this,
+                "今天全天请假？",
+                "今天剩余的打卡任务将自动跳过。",
+                "确认请假"
+            ) { addQuickLeave(LocalDate.now()) }
         }
     }
 
@@ -79,13 +82,17 @@ class LeaveManagementActivity : KotlinBaseActivity<ActivityLeaveManagementBindin
             endView.text = endDate.toString()
         }
         fun pickDate(initial: LocalDate, onPicked: (LocalDate) -> Unit) {
-            DatePickerDialog(
-                this,
-                { _, year, month, day -> onPicked(LocalDate.of(year, month + 1, day)) },
-                initial.year,
-                initial.monthValue - 1,
-                initial.dayOfMonth
-            ).show()
+            val initialMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            val picker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("选择日期")
+                .setSelection(initialMillis)
+                .setPositiveButtonText("确定")
+                .setNegativeButtonText("取消")
+                .build()
+            picker.addOnPositiveButtonClickListener { millis ->
+                onPicked(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+            }
+            picker.show(supportFragmentManager, "leave_date_picker")
         }
         updateDates()
         startView.setOnClickListener {
@@ -113,6 +120,7 @@ class LeaveManagementActivity : KotlinBaseActivity<ActivityLeaveManagementBindin
             .setPositiveButton("保存", null)
             .create()
         dialog.setOnShowListener {
+            DailyTaskDialogs.style(dialog)
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val period = when (periodGroup.checkedRadioButtonId) {
                     R.id.morningRadio -> LeavePeriod.MORNING
@@ -186,16 +194,16 @@ class LeaveManagementActivity : KotlinBaseActivity<ActivityLeaveManagementBindin
     }
 
     private fun confirmDelete(leave: LeaveRecordBean) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("删除请假记录？")
-            .setMessage("删除后，对应日期将重新按照日常规则执行任务。")
-            .setNegativeButton("取消", null)
-            .setPositiveButton("删除") { _, _ ->
-                lifecycleScope.launch {
-                    withContext(Dispatchers.IO) { LeaveManager.deleteById(leave.id) }
-                    refreshLeaves()
-                }
+        DailyTaskDialogs.showConfirm(
+            this,
+            "删除请假记录？",
+            "删除后，对应日期将重新按照日常规则执行任务。",
+            "删除"
+        ) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { LeaveManager.deleteById(leave.id) }
+                refreshLeaves()
             }
-            .show()
+        }
     }
 }

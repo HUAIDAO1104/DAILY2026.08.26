@@ -42,7 +42,7 @@
             android:layout_marginTop="2dp"
             android:text="首页"
             android:textColor="@color/text_tertiary_dark"
-            android:textSize="9sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -70,7 +70,7 @@
             android:layout_marginTop="2dp"
             android:text="日历"
             android:textColor="@color/text_tertiary_dark"
-            android:textSize="9sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -98,7 +98,7 @@
             android:layout_marginTop="2dp"
             android:text="记录"
             android:textColor="@color/text_tertiary_dark"
-            android:textSize="9sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -126,7 +126,7 @@
             android:layout_marginTop="2dp"
             android:text="设置"
             android:textColor="@color/text_tertiary_dark"
-            android:textSize="9sp" />
+            android:textSize="12sp" />
     </LinearLayout>
     </LinearLayout>
 </eightbitlab.com.blurview.BlurView>

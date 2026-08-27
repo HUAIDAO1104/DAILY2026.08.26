@@ -22,6 +22,7 @@
     <color name="glass_highlight">#19FFFFFF</color>
     <color name="accent_red">#FF5362</color>
     <color name="accent_red_deep">#B51637</color>
+    <color name="accent_red_container">#5A2632</color>
     <color name="accent_red_soft">#2EFF5362</color>
     <color name="accent_purple_soft">#283F2D78</color>
     <color name="success_green">#4BD17B</color>

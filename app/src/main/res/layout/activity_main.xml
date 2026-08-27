@@ -46,7 +46,7 @@
                     android:gravity="center"
                     android:text="DT"
                     android:textColor="@color/white"
-                    android:textSize="10sp"
+                    android:textSize="12sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -61,8 +61,8 @@
 
                 <TextView
                     android:id="@+id/addTaskButton"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:background="@drawable/bg_circle_glass"
                     android:clickable="true"
                     android:contentDescription="添加任务"
@@ -75,7 +75,7 @@
                 <LinearLayout
                     android:id="@+id/aiTopButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="36dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_glass_card_small"
                     android:clickable="true"
@@ -97,7 +97,7 @@
                         android:layout_marginStart="7dp"
                         android:text="AI 助手"
                         android:textColor="@color/text_primary_dark"
-                        android:textSize="10sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
             </LinearLayout>
@@ -133,9 +133,10 @@
                 <eightbitlab.com.blurview.BlurView
                     android:id="@+id/heroCard"
                     android:layout_width="match_parent"
-                    android:layout_height="236dp"
+                    android:layout_height="wrap_content"
                     android:background="@drawable/bg_glass_card"
                     android:elevation="2dp"
+                    android:minHeight="244dp"
                     android:padding="18dp">
 
                     <View
@@ -150,13 +151,14 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical">
 
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="34dp"
+                            android:layout_height="wrap_content"
                             android:gravity="center_vertical"
+                            android:minHeight="40dp"
                             android:orientation="horizontal">
 
                             <TextView
@@ -167,21 +169,21 @@
                                 android:letterSpacing="0.12"
                                 android:text="NEXT TASK"
                                 android:textColor="#A6FFFFFF"
-                                android:textSize="10sp"
+                                android:textSize="12sp"
                                 android:textStyle="bold" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/executeTaskButton"
                                 android:layout_width="wrap_content"
-                                android:layout_height="34dp"
+                                android:layout_height="40dp"
                                 android:insetTop="0dp"
                                 android:insetBottom="0dp"
                                 android:minWidth="76dp"
-                                android:minHeight="0dp"
+                                android:minHeight="40dp"
                                 android:text="●  已就绪"
                                 android:textAllCaps="false"
                                 android:textColor="@color/accent_red"
-                                android:textSize="10sp"
+                                android:textSize="12sp"
                                 app:backgroundTint="@color/accent_red_soft"
                                 app:cornerRadius="17dp" />
                         </LinearLayout>
@@ -205,6 +207,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="5dp"
+                            android:maxLines="2"
                             android:text="下班打卡　企业微信"
                             android:textColor="@color/text_primary_dark"
                             android:textSize="15sp"
@@ -215,14 +218,13 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:maxLines="1"
+                            android:maxLines="2"
                             android:textColor="@color/text_secondary_dark"
-                            android:textSize="10sp" />
+                            android:textSize="12sp" />
 
                         <Space
                             android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1" />
+                            android:layout_height="18dp" />
 
                         <View
                             android:layout_width="match_parent"
@@ -231,8 +233,9 @@
 
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="34dp"
+                            android:layout_height="wrap_content"
                             android:gravity="bottom"
+                            android:minHeight="34dp"
                             android:orientation="horizontal"
                             android:paddingTop="12dp">
 
@@ -241,10 +244,10 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:maxLines="1"
+                                android:maxLines="2"
                                 android:text="预计 18:02—18:08"
                                 android:textColor="#9EFFFFFF"
-                                android:textSize="10sp" />
+                                android:textSize="12sp" />
 
                             <TextView
                                 android:id="@+id/heroProgressView"
@@ -252,7 +255,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="今日完成 1 / 2"
                                 android:textColor="#9EFFFFFF"
-                                android:textSize="10sp" />
+                                android:textSize="12sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </eightbitlab.com.blurview.BlurView>
@@ -260,12 +263,13 @@
                 <LinearLayout
                     android:id="@+id/aiAssistantLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="74dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:background="@drawable/bg_glass_card_small"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="78dp"
                     android:orientation="horizontal"
                     android:paddingHorizontal="13dp">
 
@@ -296,10 +300,10 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:ellipsize="end"
-                            android:maxLines="1"
+                            android:maxLines="2"
                             android:text="权限、网络与日期规则正常，可按时执行"
                             android:textColor="@color/text_secondary_dark"
-                            android:textSize="10sp" />
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <TextView
@@ -310,7 +314,7 @@
                         android:paddingHorizontal="10dp"
                         android:text="查看"
                         android:textColor="@color/accent_red"
-                        android:textSize="10sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -337,7 +341,7 @@
                         android:layout_height="wrap_content"
                         android:text="0 / 2"
                         android:textColor="@color/text_tertiary_dark"
-                        android:textSize="10sp" />
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/leaveStatusView"
@@ -401,7 +405,7 @@
                                 android:layout_marginTop="4dp"
                                 android:text="点击右上角 ＋ 添加第一个时间点"
                                 android:textColor="@color/text_secondary_dark"
-                                android:textSize="9sp" />
+                                android:textSize="12sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </FrameLayout>
@@ -409,13 +413,14 @@
                 <LinearLayout
                     android:id="@+id/aiPromptLayout"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:layout_marginBottom="26dp"
                     android:background="@drawable/bg_glass_card_small"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
+                    android:minHeight="52dp"
                     android:orientation="horizontal"
                     android:paddingHorizontal="10dp">
 
@@ -431,7 +436,7 @@
                         android:layout_weight="1"
                         android:text="问 AI：今天为什么不打卡？"
                         android:textColor="@color/text_secondary_dark"
-                        android:textSize="11sp" />
+                        android:textSize="14sp" />
 
                     <TextView
                         android:layout_width="wrap_content"

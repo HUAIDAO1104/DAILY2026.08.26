@@ -22,6 +22,7 @@ import com.pengxh.daily.app.ai.AiPlanner
 import com.pengxh.daily.app.ai.DailyTaskOperations
 import com.pengxh.daily.app.ai.ValidatedAiPlan
 import com.pengxh.daily.app.databinding.ActivityAiAssistantBinding
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.dp2px
 import com.pengxh.kt.lite.extensions.show
@@ -134,21 +135,21 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         card.addView(TextView(this).apply {
             text = plan.summary
             setTextColor(getColor(R.color.text_primary_dark))
-            textSize = 13f
+            textSize = 15f
             setTypeface(null, android.graphics.Typeface.BOLD)
         })
         plan.previews.forEachIndexed { index, preview ->
             card.addView(TextView(this).apply {
                 text = "${index + 1}. $preview"
                 setTextColor(getColor(R.color.text_secondary_dark))
-                textSize = 11f
+                textSize = 14f
                 setPadding(0, 9.dp2px(this@AiAssistantActivity), 0, 0)
             })
         }
         card.addView(TextView(this).apply {
             text = "执行前会自动保存本机配置快照"
             setTextColor(getColor(R.color.text_tertiary_dark))
-            textSize = 9f
+            textSize = 12f
             setPadding(0, 11.dp2px(this@AiAssistantActivity), 0, 0)
         })
         val actions = LinearLayout(this).apply {
@@ -197,13 +198,13 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         warning.addView(TextView(this).apply {
             text = "再次确认"
             setTextColor(getColor(R.color.warning_amber))
-            textSize = 13f
+            textSize = 15f
             setTypeface(null, android.graphics.Typeface.BOLD)
         })
         warning.addView(TextView(this).apply {
             text = "计划包含删除或恢复操作。执行前仍会创建快照，可在配置备份中恢复。"
             setTextColor(getColor(R.color.text_secondary_dark))
-            textSize = 11f
+            textSize = 14f
             setPadding(0, 8.dp2px(this@AiAssistantActivity), 0, 0)
         })
         val execute = MaterialButton(this).apply {
@@ -249,6 +250,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             .setPositiveButton("保存", null)
             .create()
         dialog.setOnShowListener {
+            DailyTaskDialogs.style(dialog)
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val url = baseUrl.text?.toString()?.trim().orEmpty()
                 val modelName = model.text?.toString()?.trim().orEmpty()

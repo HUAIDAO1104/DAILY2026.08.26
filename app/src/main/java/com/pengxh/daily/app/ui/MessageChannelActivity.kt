@@ -4,11 +4,11 @@ import android.os.Bundle
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.JsonObject
 import com.pengxh.daily.app.databinding.ActivityMessageChannelBinding
 import com.pengxh.daily.app.utils.ConfigStore
 import com.pengxh.daily.app.utils.Constant
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.MessageDispatcher
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.isEmail
@@ -70,13 +70,13 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
                 Constant.WX_WEB_HOOK_KEY, binding.wxKeyView.text.toString()
             )
 
-            MaterialAlertDialogBuilder(this)
-                .setTitle("测试消息")
-                .setMessage("企业微信配置完成，可以发送企业微信消息。\n\n是否继续？")
-                .setCancelable(false)
-                .setPositiveButton("继续") { _, _ ->
-                    sendTestMessage()
-                }.setNegativeButton("取消", null).show()
+            DailyTaskDialogs.showConfirm(
+                this,
+                "发送测试消息？",
+                "将向已配置的企业微信群机器人发送一条测试消息。",
+                "发送",
+                cancelable = false
+            ) { sendTestMessage() }
         }
 
         binding.sendEmailButton.setOnClickListener {
@@ -152,30 +152,32 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
     }
 
     private fun sendTestEmail() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("测试邮件")
-            .setMessage("QQ邮箱配置完成，可以发送QQ邮件。\n\n是否继续？")
-            .setCancelable(false)
-            .setPositiveButton("继续") { _, _ ->
-                LoadingDialog.show(context, "邮件发送中，请稍后....")
-                MessageDispatcher.sendMessage(
-                    "邮箱测试", "这是一封测试邮件，不必关注",
-                    channelOverride = 0,
-                    onSuccess = {
-                        LoadingDialog.dismiss()
-                        "发送成功，请注意查收".show(context)
+        DailyTaskDialogs.showConfirm(
+            this,
+            "发送测试邮件？",
+            "将从已配置的 QQ 邮箱向收件地址发送一封测试邮件。",
+            "发送",
+            cancelable = false
+        ) {
+            LoadingDialog.show(context, "邮件发送中，请稍后...")
+            MessageDispatcher.sendMessage(
+                "邮箱测试", "这是一封测试邮件，不必关注",
+                channelOverride = 0,
+                onSuccess = {
+                    LoadingDialog.dismiss()
+                    "发送成功，请注意查收".show(context)
 
-                        SaveKeyValues.saveString(
-                            Constant.MESSAGE_TITLE_KEY,
-                            binding.messageTitleView.text.toString().trim()
-                        )
+                    SaveKeyValues.saveString(
+                        Constant.MESSAGE_TITLE_KEY,
+                        binding.messageTitleView.text.toString().trim()
+                    )
 
-                        SaveKeyValues.saveInt(Constant.MSG_CHANNEL_KEY, 0)
-                    },
-                    onFailure = {
-                        LoadingDialog.dismiss()
-                        "发送失败：${it}".show(context)
-                    })
-            }.setNegativeButton("取消", null).show()
+                    SaveKeyValues.saveInt(Constant.MSG_CHANNEL_KEY, 0)
+                },
+                onFailure = {
+                    LoadingDialog.dismiss()
+                    "发送失败：${it}".show(context)
+                })
+        }
     }
 }

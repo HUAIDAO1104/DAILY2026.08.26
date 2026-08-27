@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.text.InputType
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -16,11 +17,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.github.gzuliyujiang.wheelpicker.widget.TimeWheelLayout
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textview.MaterialTextView
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.adapter.DailyTaskAdapter
 import com.pengxh.daily.app.databinding.ActivityMainBinding
@@ -32,6 +28,7 @@ import com.pengxh.daily.app.service.NotificationMonitorService
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
 import com.pengxh.daily.app.utils.Constant
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.AppUpdateInfo
 import com.pengxh.daily.app.utils.AppUpdateManager
 import com.pengxh.daily.app.utils.FloatingWindowController
@@ -56,8 +53,6 @@ import com.pengxh.kt.lite.extensions.show
 import com.pengxh.kt.lite.extensions.toJson
 import com.pengxh.kt.lite.utils.SaveKeyValues
 import com.pengxh.kt.lite.utils.LoadingDialog
-import com.pengxh.kt.lite.widget.dialog.AlertInputDialog
-import com.pengxh.kt.lite.widget.dialog.BottomActionSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -474,120 +469,74 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             "任务进行中，无法删除".show(this)
             return
         }
-        MaterialAlertDialogBuilder(this)
-            .setTitle("删除任务")
-            .setMessage("确定要删除这个任务吗？")
-            .setCancelable(false) // 禁止点击外部关闭
-            .setPositiveButton("确定") { _, _ ->
-                try {
-                    lifecycleScope.launch {
-                        val item = taskBeans[position]
-                        withContext(Dispatchers.IO) {
-                            DatabaseWrapper.deleteTask(item)
-                        }
-
-                        // 为了确保数据一致性，重新从数据库加载数据
-                        taskBeans = withContext(Dispatchers.IO) {
-                            DatabaseWrapper.loadAllTask()
-                        }
-                        dailyTaskAdapter.refresh(taskBeans)
-                        updateHomeSummary()
-
-                        if (taskBeans.isEmpty()) {
-                            binding.recyclerView.visibility = View.GONE
-                            binding.emptyView.visibility = View.VISIBLE
-                        } else {
-                            binding.recyclerView.visibility = View.VISIBLE
-                            binding.emptyView.visibility = View.GONE
-                        }
+        DailyTaskDialogs.showConfirm(
+            context = this,
+            title = "删除这个任务？",
+            message = "删除后不会再执行，历史记录仍会保留。",
+            positiveText = "删除",
+            cancelable = false
+        ) {
+            try {
+                lifecycleScope.launch {
+                    val item = taskBeans[position]
+                    withContext(Dispatchers.IO) {
+                        DatabaseWrapper.deleteTask(item)
                     }
-                } catch (e: IndexOutOfBoundsException) {
-                    e.printStackTrace()
-                }
-            }.setNegativeButton("取消", null).show()
-    }
 
-    private fun createTask() {
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_layout_select_time, null)
-        val dialog = BottomSheetDialog(this)
-        dialog.setContentView(view)
-        val titleView = view.findViewById<MaterialTextView>(R.id.titleView)
-        titleView.text = "添加任务"
-        val timePicker = view.findViewById<TimeWheelLayout>(R.id.timePicker)
-        view.findViewById<MaterialButton>(R.id.saveButton).setOnClickListener {
-            val time = String.format(
-                Locale.getDefault(),
-                "%02d:%02d:%02d",
-                timePicker.selectedHour,
-                timePicker.selectedMinute,
-                timePicker.selectedSecond
-            )
+                    taskBeans = withContext(Dispatchers.IO) {
+                        DatabaseWrapper.loadAllTask()
+                    }
+                    dailyTaskAdapter.refresh(taskBeans)
+                    updateHomeSummary()
 
-            lifecycleScope.launch {
-                val exist = withContext(Dispatchers.IO) {
-                    DatabaseWrapper.isTaskTimeExist(time)
+                    if (taskBeans.isEmpty()) {
+                        binding.recyclerView.visibility = View.GONE
+                        binding.emptyView.visibility = View.VISIBLE
+                    } else {
+                        binding.recyclerView.visibility = View.VISIBLE
+                        binding.emptyView.visibility = View.GONE
+                    }
                 }
-                if (exist) {
-                    "任务时间点已存在".show(context)
-                    return@launch
-                }
-                binding.recyclerView.visibility = View.VISIBLE
-                binding.emptyView.visibility = View.GONE
-                val bean = DailyTaskBean().apply {
-                    this.time = time
-                }
-                withContext(Dispatchers.IO) {
-                    DatabaseWrapper.insert(bean)
-                }
-                taskBeans = withContext(Dispatchers.IO) {
-                    DatabaseWrapper.loadAllTask()
-                }
-                dailyTaskAdapter.refresh(taskBeans)
-                updateHomeSummary()
-                dialog.dismiss()
+            } catch (e: IndexOutOfBoundsException) {
+                e.printStackTrace()
             }
         }
-        dialog.show()
     }
 
     private fun importTask() {
-        AlertInputDialog.Builder()
-            .setContext(this)
-            .setTitle("导入任务")
-            .setHintMessage("请将导出的任务粘贴到这里")
-            .setNegativeButton("取消")
-            .setPositiveButton("确定")
-            .setOnDialogButtonClickListener(object :
-                AlertInputDialog.OnDialogButtonClickListener {
-                override fun onConfirmClick(value: String) {
-                    // 同一个业务，可以使用同一个协程作用域，避免重复创建
-                    lifecycleScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            taskDataManager.importTasks(value)
-                        }
-                        when (result) {
-                            is TaskDataManager.ImportResult.Success -> {
-                                if (result.count > 0) {
-                                    taskBeans = withContext(Dispatchers.IO) {
-                                        DatabaseWrapper.loadAllTask()
-                                    }
-                                    dailyTaskAdapter.refresh(taskBeans)
-                                    updateHomeSummary()
-                                    binding.recyclerView.visibility = View.VISIBLE
-                                    binding.emptyView.visibility = View.GONE
-                                }
-                                "任务导入成功".show(context)
+        DailyTaskDialogs.showTextInput(
+            context = this,
+            title = "导入任务",
+            label = "任务配置",
+            description = "粘贴之前导出的配置内容。导入前会校验格式。",
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE,
+            maxLines = 7,
+            validator = { if (it.isBlank()) "请先粘贴任务配置" else null }
+        ) { value ->
+            lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    taskDataManager.importTasks(value)
+                }
+                when (result) {
+                    is TaskDataManager.ImportResult.Success -> {
+                        if (result.count > 0) {
+                            taskBeans = withContext(Dispatchers.IO) {
+                                DatabaseWrapper.loadAllTask()
                             }
+                            dailyTaskAdapter.refresh(taskBeans)
+                            updateHomeSummary()
+                            binding.recyclerView.visibility = View.VISIBLE
+                            binding.emptyView.visibility = View.GONE
+                        }
+                        "任务导入成功".show(context)
+                    }
 
-                            is TaskDataManager.ImportResult.Error -> {
-                                result.message.show(context)
-                            }
-                        }
+                    is TaskDataManager.ImportResult.Error -> {
+                        result.message.show(context)
                     }
                 }
-
-                override fun onCancelClick() {}
-            }).build().show()
+            }
+        }
     }
 
     private suspend fun updateHomeSummary() {
@@ -667,26 +616,21 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     }
 
     private fun showUpdateDialog(info: AppUpdateInfo) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("发现新版本 ${info.version}")
-            .setMessage(info.notes.ifBlank { "修复问题并改进使用体验。" })
-            .setNegativeButton("稍后", null)
-            .setPositiveButton("备份并更新") { _, _ ->
-                lifecycleScope.launch {
-                    LoadingDialog.show(this@MainActivity, "正在下载更新...")
-                    try {
-                        val apk = AppUpdateManager.download(this@MainActivity, info)
-                        LoadingDialog.dismiss()
-                        if (!AppUpdateManager.installOrRequestPermission(this@MainActivity, apk)) {
-                            "请允许安装更新，返回后会继续".show(this@MainActivity)
-                        }
-                    } catch (e: Exception) {
-                        LoadingDialog.dismiss()
-                        (e.message ?: "更新下载失败").show(this@MainActivity)
+        DailyTaskDialogs.showUpdate(this, info) {
+            lifecycleScope.launch {
+                LoadingDialog.show(this@MainActivity, "正在下载更新...")
+                try {
+                    val apk = AppUpdateManager.download(this@MainActivity, info)
+                    LoadingDialog.dismiss()
+                    if (!AppUpdateManager.installOrRequestPermission(this@MainActivity, apk)) {
+                        "请允许安装更新，返回后会继续".show(this@MainActivity)
                     }
+                } catch (e: Exception) {
+                    LoadingDialog.dismiss()
+                    (e.message ?: "更新下载失败").show(this@MainActivity)
                 }
             }
-            .show()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

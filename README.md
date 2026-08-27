@@ -77,7 +77,7 @@
 
 ## 最新版本
 
-**2.5.1** — *2026年8月26日*
+**2.5.2** — *2026年8月27日*
 
 > [下载最新正式版](https://github.com/HUAIDAO1104/DAILY2026.08.26/releases/latest)
 
@@ -87,7 +87,7 @@
 
 - 主分支：`master`
 - 应用版本在 `app/build.gradle` 中维护，每次发布必须同时递增 `versionCode` 和 `versionName`。
-- 推送形如 `v2.5.1` 的版本标签后，GitHub Actions 会自动执行正式签名构建、生成 SHA-256 并创建 Release。
+- 推送形如 `v2.5.2` 的版本标签后，GitHub Actions 会自动执行正式签名构建、生成 SHA-256 并创建 Release。
 - 应用内更新固定读取当前仓库的最新 Release；Release 中必须包含一个 `.apk` 文件。
 - `origin` 指向当前维护仓库；上游原项目仅作为历史参考，不作为发布源。
 

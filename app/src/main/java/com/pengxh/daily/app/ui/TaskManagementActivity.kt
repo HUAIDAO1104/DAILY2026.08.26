@@ -7,11 +7,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.pengxh.daily.app.adapter.DailyTaskAdapter
 import com.pengxh.daily.app.databinding.ActivityTaskManagementBinding
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
+import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.TaskScheduler
 import com.pengxh.kt.lite.base.KotlinBaseActivity
 import com.pengxh.kt.lite.extensions.navigatePageTo
@@ -34,6 +34,12 @@ class TaskManagementActivity : KotlinBaseActivity<ActivityTaskManagementBinding>
     override fun setupTopBarLayout() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { view, insets -> view.setPadding(0, insets.getInsets(WindowInsetsCompat.Type.statusBars()).top, 0, 0); insets }
+        val baseBottomPadding = binding.contentContainer.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.contentContainer) { view, insets ->
+            val navigationBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, baseBottomPadding + navigationBar)
+            insets
+        }
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
     override fun initOnCreate(savedInstanceState: Bundle?) { binding.recyclerView.adapter = adapter; loadTasks() }
@@ -56,7 +62,16 @@ class TaskManagementActivity : KotlinBaseActivity<ActivityTaskManagementBinding>
     }
     private fun confirmDelete(task: DailyTaskBean) {
         if (TaskScheduler.isRunning()) { "任务运行中，请先停止任务".show(this); return }
-        MaterialAlertDialogBuilder(this).setTitle("删除任务？").setMessage("删除后不会再执行，历史记录不受影响。")
-            .setNegativeButton("取消", null).setPositiveButton("删除") { _, _ -> lifecycleScope.launch { withContext(Dispatchers.IO) { DatabaseWrapper.deleteTask(task) }; loadTasks() } }.show()
+        DailyTaskDialogs.showConfirm(
+            this,
+            "删除这个任务？",
+            "删除后不会再执行，历史记录仍会保留。",
+            "删除"
+        ) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { DatabaseWrapper.deleteTask(task) }
+                loadTasks()
+            }
+        }
     }
 }
