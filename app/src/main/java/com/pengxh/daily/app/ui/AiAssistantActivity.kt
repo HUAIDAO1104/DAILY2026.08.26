@@ -206,7 +206,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         }
         card.addView(TextView(this).apply {
             text = plan.summary
-            setTextColor(getColor(R.color.text_primary_dark))
+            setTextColor(getColor(R.color.ai_text_warm))
             textSize = 15f
             setTypeface(null, android.graphics.Typeface.BOLD)
         })

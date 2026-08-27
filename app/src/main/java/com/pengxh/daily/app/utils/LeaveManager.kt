@@ -2,6 +2,8 @@ package com.pengxh.daily.app.utils
 
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.LeaveRecordBean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -23,9 +25,9 @@ object LeaveManager {
         endDate: LocalDate,
         period: LeavePeriod,
         reason: String
-    ): Long {
+    ): Long = withContext(Dispatchers.IO) {
         require(!endDate.isBefore(startDate)) { "结束日期不能早于开始日期" }
-        return DatabaseWrapper.insertLeave(LeaveRecordBean().apply {
+        DatabaseWrapper.insertLeave(LeaveRecordBean().apply {
             this.startDate = startDate.toString()
             this.endDate = endDate.toString()
             this.period = period.name
@@ -34,14 +36,20 @@ object LeaveManager {
         })
     }
 
-    suspend fun loadAll(): List<LeaveRecordBean> = DatabaseWrapper.loadAllLeaves()
+    suspend fun loadAll(): List<LeaveRecordBean> = withContext(Dispatchers.IO) {
+        DatabaseWrapper.loadAllLeaves()
+    }
 
-    suspend fun deleteById(id: Int) = DatabaseWrapper.deleteLeaveById(id)
+    suspend fun deleteById(id: Int) = withContext(Dispatchers.IO) {
+        DatabaseWrapper.deleteLeaveById(id)
+    }
 
-    suspend fun cancelForDate(date: LocalDate): Int = DatabaseWrapper.deleteLeavesForDate(date)
+    suspend fun cancelForDate(date: LocalDate): Int = withContext(Dispatchers.IO) {
+        DatabaseWrapper.deleteLeavesForDate(date)
+    }
 
-    suspend fun periodsFor(date: LocalDate): Set<LeavePeriod> {
-        return DatabaseWrapper.loadLeavesForDate(date)
+    suspend fun periodsFor(date: LocalDate): Set<LeavePeriod> = withContext(Dispatchers.IO) {
+        DatabaseWrapper.loadLeavesForDate(date)
             .map { LeavePeriod.fromRaw(it.period) }
             .toSet()
     }

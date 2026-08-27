@@ -3,6 +3,8 @@ package com.pengxh.daily.app.utils
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
 import com.pengxh.daily.app.sqlite.bean.ExecutionRecordBean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -18,7 +20,7 @@ object ExecutionRecordManager {
         actualTime: String?,
         status: String,
         detail: String
-    ) {
+    ) = withContext(Dispatchers.IO) {
         DatabaseWrapper.insertExecutionRecord(ExecutionRecordBean().apply {
             date = LocalDate.now().toString()
             taskId = task.id
@@ -31,7 +33,7 @@ object ExecutionRecordManager {
         })
     }
 
-    suspend fun recordDay(status: String, title: String, detail: String) {
+    suspend fun recordDay(status: String, title: String, detail: String) = withContext(Dispatchers.IO) {
         DatabaseWrapper.insertExecutionRecord(ExecutionRecordBean().apply {
             date = LocalDate.now().toString()
             taskId = 0

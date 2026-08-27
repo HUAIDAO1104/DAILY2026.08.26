@@ -31,28 +31,28 @@ class AuroraBackgroundView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.drawColor(Color.rgb(9, 9, 11))
+        canvas.drawColor(Color.rgb(14, 5, 10))
         if (width == 0 || height == 0) return
         drawGlow(
             canvas,
             width * (0.15f + 0.18f * phase),
             height * (0.18f + 0.05f * sin(phase * Math.PI).toFloat()),
             width * 0.78f,
-            Color.argb(78, 255, 48, 64)
+            Color.argb(92, 187, 24, 59)
         )
         drawGlow(
             canvas,
             width * (0.92f - 0.22f * phase),
             height * 0.52f,
             width * 0.72f,
-            Color.argb(42, 119, 36, 255)
+            Color.argb(54, 132, 30, 80)
         )
         drawGlow(
             canvas,
             width * 0.38f,
             height * (0.92f - 0.12f * phase),
             width * 0.65f,
-            Color.argb(34, 255, 92, 45)
+            Color.argb(42, 205, 96, 83)
         )
     }
 

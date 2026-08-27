@@ -123,8 +123,8 @@ class AiCompanionView @JvmOverloads constructor(
             cy + radius * 0.35f,
             radius * 1.65f * pulse,
             intArrayOf(
-                Color.argb(58, 146, 21, 50),
-                Color.argb(26, 72, 7, 25),
+                Color.argb(70, 172, 29, 65),
+                Color.argb(34, 103, 18, 52),
                 Color.TRANSPARENT
             ),
             floatArrayOf(0f, 0.48f, 1f),
@@ -157,7 +157,7 @@ class AiCompanionView @JvmOverloads constructor(
         paint.shader = null
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = maxOf(1f, radius * 0.016f)
-        paint.color = Color.argb(ringAlpha, 190, 50, 76)
+        paint.color = Color.argb(ringAlpha, 205, 70, 92)
         paint.pathEffect = DashPathEffect(
             floatArrayOf(maxOf(1f, radius * 0.035f), maxOf(3f, radius * 0.09f)),
             time * radius * 0.2f
@@ -165,7 +165,7 @@ class AiCompanionView @JvmOverloads constructor(
         canvas.drawCircle(cx, cy, outerRadius, paint)
 
         paint.pathEffect = null
-        paint.color = Color.argb(ringAlpha + 18, 164, 31, 60)
+        paint.color = Color.argb(ringAlpha + 18, 146, 38, 78)
         val innerBounds = RectF(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius)
         if (state == State.THINKING || state == State.TRANSCRIBING) {
             canvas.drawArc(innerBounds, time * 220f * speed, 268f, false, paint)
@@ -176,7 +176,7 @@ class AiCompanionView @JvmOverloads constructor(
         if (!compact) {
             paint.style = Paint.Style.FILL
             val outerAngle = time * speed * PI.toFloat() * 2f
-            paint.color = Color.argb(205, 203, 60, 87)
+            paint.color = Color.argb(215, 221, 94, 105)
             canvas.drawCircle(
                 cx + cos(outerAngle) * outerRadius,
                 cy + sin(outerAngle) * outerRadius,
@@ -184,7 +184,7 @@ class AiCompanionView @JvmOverloads constructor(
                 paint
             )
             val innerAngle = -time * speed * 1.35f * PI.toFloat() * 2f + 1.4f
-            paint.color = Color.argb(150, 226, 184, 194)
+            paint.color = Color.argb(185, 212, 124, 112)
             canvas.drawCircle(
                 cx + cos(innerAngle) * innerRadius,
                 cy + sin(innerAngle) * innerRadius,
@@ -204,19 +204,19 @@ class AiCompanionView @JvmOverloads constructor(
             radius * 1.65f,
             when (state) {
                 State.ERROR -> intArrayOf(
-                    Color.argb(244, 64, 55, 58),
-                    Color.argb(218, 74, 48, 52),
-                    Color.argb(184, 94, 46, 51)
+                    Color.argb(246, 132, 28, 52),
+                    Color.argb(224, 105, 16, 42),
+                    Color.argb(198, 74, 8, 30)
                 )
                 State.SLEEPING -> intArrayOf(
-                    Color.argb(238, 48, 45, 49),
-                    Color.argb(210, 54, 38, 44),
-                    Color.argb(170, 72, 19, 35)
+                    Color.argb(238, 93, 25, 48),
+                    Color.argb(214, 74, 16, 39),
+                    Color.argb(180, 53, 8, 28)
                 )
                 else -> intArrayOf(
-                    Color.argb(246, 58, 54, 59),
-                    Color.argb(225, 63, 39, 48),
-                    Color.argb(205, 122, 17, 46)
+                    Color.argb(248, 151, 38, 66),
+                    Color.argb(232, 112, 19, 50),
+                    Color.argb(215, 82, 8, 35)
                 )
             },
             floatArrayOf(0f, 0.56f, 1f),
@@ -233,10 +233,10 @@ class AiCompanionView @JvmOverloads constructor(
 
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = maxOf(1.1f, radius * 0.026f)
-        paint.color = Color.argb(132, 255, 255, 255)
+        paint.color = Color.argb(176, 231, 145, 142)
         canvas.drawPath(bodyPath, paint)
         paint.strokeWidth = maxOf(0.8f, radius * 0.012f)
-        paint.color = Color.argb(118, 177, 99, 117)
+        paint.color = Color.argb(138, 176, 59, 88)
         canvas.drawCircle(cx, cy, radius * 0.93f, paint)
     }
 
@@ -301,9 +301,9 @@ class AiCompanionView @JvmOverloads constructor(
             cx + radius,
             cy + radius,
             intArrayOf(
-                Color.argb(220, 168, 30, 62),
-                Color.argb(235, 112, 12, 39),
-                Color.argb(238, 60, 5, 24)
+                Color.argb(230, 195, 47, 76),
+                Color.argb(240, 139, 20, 52),
+                Color.argb(242, 81, 7, 31)
             ),
             floatArrayOf(0f, 0.5f, 1f),
             Shader.TileMode.CLAMP
@@ -313,7 +313,7 @@ class AiCompanionView @JvmOverloads constructor(
 
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = maxOf(1f, radius * 0.025f)
-        paint.color = Color.argb(155, 214, 133, 151)
+        paint.color = Color.argb(178, 222, 119, 118)
         canvas.drawPath(liquidPath, paint)
 
         secondaryLiquidPath.reset()
@@ -342,9 +342,9 @@ class AiCompanionView @JvmOverloads constructor(
             cx + radius * 0.35f,
             cy,
             intArrayOf(
-                Color.argb(150, 196, 186, 190),
-                Color.argb(130, 149, 89, 105),
-                Color.argb(110, 137, 31, 57)
+                Color.argb(178, 212, 124, 112),
+                Color.argb(158, 170, 55, 88),
+                Color.argb(136, 110, 21, 59)
             ),
             null,
             Shader.TileMode.CLAMP
@@ -353,13 +353,13 @@ class AiCompanionView @JvmOverloads constructor(
         paint.shader = null
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = maxOf(1f, radius * 0.02f)
-        paint.color = Color.argb(110, 255, 255, 255)
+        paint.color = Color.argb(145, 231, 145, 142)
         canvas.drawPath(secondaryLiquidPath, paint)
     }
 
     private fun drawHighlights(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
         paint.style = Paint.Style.FILL
-        paint.color = Color.argb(100, 255, 255, 255)
+        paint.color = Color.argb(132, 244, 164, 151)
         canvas.save()
         canvas.rotate(-24f, cx - radius * 0.3f, cy - radius * 0.48f)
         canvas.drawOval(
@@ -372,7 +372,7 @@ class AiCompanionView @JvmOverloads constructor(
             paint
         )
         canvas.restore()
-        paint.color = Color.argb(48, 255, 255, 255)
+        paint.color = Color.argb(82, 218, 92, 112)
         canvas.drawCircle(cx + radius * 0.53f, cy - radius * 0.46f, radius * 0.12f, paint)
     }
 
@@ -384,9 +384,9 @@ class AiCompanionView @JvmOverloads constructor(
             else -> radius * 0.34f
         }
         val eyeColor = if (state == State.ERROR || state == State.INTERRUPTED) {
-            Color.rgb(225, 190, 198)
+            Color.rgb(229, 163, 169)
         } else {
-            Color.rgb(255, 244, 247)
+            Color.rgb(255, 225, 218)
         }
         paint.shader = null
         paint.color = eyeColor

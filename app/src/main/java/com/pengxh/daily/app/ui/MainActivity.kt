@@ -237,6 +237,14 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                         LogFileManager.writeLog("今日任务已全部执行完毕")
                         MessageDispatcher.sendMessage("任务状态通知", "今日任务已全部执行完毕")
                     }
+
+                    is TipsEvent.Error -> {
+                        dailyTaskAdapter.updateCurrentTaskState(-1)
+                        binding.heroKickerView.text = "任务状态 · 启动失败"
+                        binding.tipsView.text = event.message
+                        binding.tipsView.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
+                        event.message.show(this@MainActivity)
+                    }
                 }
             }
         }

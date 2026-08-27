@@ -10,6 +10,7 @@ import com.pengxh.daily.app.service.ForegroundRunningService
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.DailyTaskBean
 import com.pengxh.kt.lite.utils.SaveKeyValues
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -92,39 +93,49 @@ object TaskScheduler {
         _isRunning.value = true
 
         val tempJob = currentScope.launch {
-            while (isActive) {
-                val today = LocalDate.now()
+            try {
+                while (isActive) {
+                    val today = LocalDate.now()
 
-                // 今天已经处理过了，不再重复
-                if (lastProcessedDate == today) {
-                    LogFileManager.writeLog("今日已处理，等待下一次重置")
-                    if (isActive) waitUntilNextReset()
-                    continue
-                }
-
-                if (shouldSkipToday()) {
-                    _tipsEvent.emit(TipsEvent.Skip)
-                    ForegroundRunningService.emitNotificationText("今日休息，任务已跳过")
-                    ExecutionRecordManager.recordDay(
-                        ExecutionRecordManager.SKIPPED,
-                        "全天任务已跳过",
-                        "请假、节假日或固定休息日规则生效"
-                    )
-                } else {
-                    val schedule = buildTodaySchedule()
-                    if (schedule.isEmpty()) {
-                        LogFileManager.writeLog("任务列表为空，停止调度")
-                        return@launch
+                    // 今天已经处理过了，不再重复
+                    if (lastProcessedDate == today) {
+                        LogFileManager.writeLog("今日已处理，等待下一次重置")
+                        if (isActive) waitUntilNextReset()
+                        continue
                     }
 
-                    LogFileManager.writeLog("开始执行每日任务，共 ${schedule.size} 个")
-                    executeSchedule(schedule)
+                    if (shouldSkipToday()) {
+                        _tipsEvent.emit(TipsEvent.Skip)
+                        ForegroundRunningService.emitNotificationText("今日休息，任务已跳过")
+                        ExecutionRecordManager.recordDay(
+                            ExecutionRecordManager.SKIPPED,
+                            "全天任务已跳过",
+                            "请假、节假日或固定休息日规则生效"
+                        )
+                    } else {
+                        val schedule = buildTodaySchedule()
+                        if (schedule.isEmpty()) {
+                            LogFileManager.writeLog("任务列表为空，停止调度")
+                            return@launch
+                        }
+
+                        LogFileManager.writeLog("开始执行每日任务，共 ${schedule.size} 个")
+                        executeSchedule(schedule)
+                    }
+
+                    lastProcessedDate = today
+
+                    // 今天结束，睡到明天
+                    if (isActive) waitUntilNextReset()
                 }
-
-                lastProcessedDate = today
-
-                // 今天结束，睡到明天
-                if (isActive) waitUntilNextReset()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                val reason = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+                LogFileManager.writeLog("任务调度异常：$reason")
+                FloatingWindowController.hide()
+                ForegroundRunningService.emitNotificationText("任务启动失败，请打开应用检查")
+                _tipsEvent.emit(TipsEvent.Error("任务启动失败，请重试"))
             }
         }
         tempJob.invokeOnCompletion {

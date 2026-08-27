@@ -13,7 +13,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#A607080B" />
+        android:background="@color/ai_page_overlay" />
 
     <LinearLayout
         android:id="@+id/assistantContent"
@@ -54,7 +54,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="AI 操作助手"
-                        android:textColor="@color/text_primary_dark"
+                        android:textColor="@color/ai_text_warm"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -63,7 +63,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="修改前先核对 · 配置只存本机"
-                        android:textColor="@color/text_tertiary_dark"
+                        android:textColor="@color/ai_text_muted"
                         android:textSize="11sp" />
                 </LinearLayout>
 
@@ -76,15 +76,15 @@
                     android:minHeight="44dp"
                     android:minWidth="0dp"
                     android:text="模型"
-                    android:textColor="@color/text_secondary_dark"
+                    android:textColor="@color/ai_text_rose"
                     android:textSize="12sp"
-                    app:backgroundTint="@color/glass_surface_soft"
+                    app:backgroundTint="@color/ai_surface_wine_soft"
                     app:cornerRadius="14dp"
                     app:icon="@drawable/ic_model_modern"
                     app:iconPadding="5dp"
                     app:iconSize="17dp"
-                    app:iconTint="@color/text_secondary_dark"
-                    app:strokeColor="@color/glass_stroke"
+                    app:iconTint="@color/ai_highlight_copper"
+                    app:strokeColor="@color/ai_stroke_rose"
                     app:strokeWidth="1dp" />
 
                 <ImageView
@@ -120,7 +120,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="-2dp"
                 android:text="在这儿，随时可以开始"
-                android:textColor="@color/text_primary_dark"
+                android:textColor="@color/ai_text_warm"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -132,7 +132,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="直接告诉我你想修改什么"
-                android:textColor="@color/text_secondary_dark"
+                android:textColor="@color/ai_text_rose"
                 android:textSize="12sp" />
         </LinearLayout>
 
@@ -174,11 +174,11 @@
                     android:insetBottom="0dp"
                     android:minHeight="42dp"
                     android:text="明天请假"
-                    android:textColor="@color/text_secondary_dark"
+                    android:textColor="@color/ai_text_rose"
                     android:textSize="12sp"
-                    app:backgroundTint="@color/glass_surface_soft"
+                    app:backgroundTint="@color/ai_surface_wine_soft"
                     app:cornerRadius="14dp"
-                    app:strokeColor="@color/glass_stroke"
+                    app:strokeColor="@color/ai_stroke_rose"
                     app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -190,11 +190,11 @@
                     android:insetBottom="0dp"
                     android:minHeight="42dp"
                     android:text="周末节假日不打卡"
-                    android:textColor="@color/text_secondary_dark"
+                    android:textColor="@color/ai_text_rose"
                     android:textSize="12sp"
-                    app:backgroundTint="@color/glass_surface_soft"
+                    app:backgroundTint="@color/ai_surface_wine_soft"
                     app:cornerRadius="14dp"
-                    app:strokeColor="@color/glass_stroke"
+                    app:strokeColor="@color/ai_stroke_rose"
                     app:strokeWidth="1dp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -206,11 +206,11 @@
                     android:insetBottom="0dp"
                     android:minHeight="42dp"
                     android:text="关闭随机时间"
-                    android:textColor="@color/text_secondary_dark"
+                    android:textColor="@color/ai_text_rose"
                     android:textSize="12sp"
-                    app:backgroundTint="@color/glass_surface_soft"
+                    app:backgroundTint="@color/ai_surface_wine_soft"
                     app:cornerRadius="14dp"
-                    app:strokeColor="@color/glass_stroke"
+                    app:strokeColor="@color/ai_stroke_rose"
                     app:strokeWidth="1dp" />
             </LinearLayout>
         </HorizontalScrollView>
@@ -241,8 +241,8 @@
                 android:maxLines="4"
                 android:minHeight="48dp"
                 android:paddingHorizontal="9dp"
-                android:textColor="@color/text_primary_dark"
-                android:textColorHint="@color/text_tertiary_dark"
+                android:textColor="@color/ai_text_warm"
+                android:textColorHint="@color/ai_text_muted"
                 android:textSize="15sp" />
 
             <androidx.appcompat.widget.AppCompatImageButton

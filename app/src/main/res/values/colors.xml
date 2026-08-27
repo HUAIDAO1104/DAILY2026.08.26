@@ -25,6 +25,16 @@
     <color name="accent_red_container">#5A2632</color>
     <color name="accent_red_soft">#2EFF5362</color>
     <color name="accent_purple_soft">#283F2D78</color>
+    <color name="ai_page_overlay">#8612070D</color>
+    <color name="ai_surface_wine">#D6240B17</color>
+    <color name="ai_surface_wine_soft">#AD32101F</color>
+    <color name="ai_surface_wine_strong">#EE35101E</color>
+    <color name="ai_stroke_rose">#827A3048</color>
+    <color name="ai_highlight_rose">#E79A9B</color>
+    <color name="ai_highlight_copper">#D47C70</color>
+    <color name="ai_text_warm">#FFF0EC</color>
+    <color name="ai_text_rose">#E1A8B1</color>
+    <color name="ai_text_muted">#B47B89</color>
     <color name="success_green">#4BD17B</color>
     <color name="warning_amber">#E9AD55</color>
     <color name="text_primary_dark">#F7F7F9</color>
