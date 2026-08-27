@@ -83,8 +83,6 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     private val maskViewController by lazy { MaskViewController(this, binding, insetsController) }
     private val gestureController by lazy { GestureController(this, maskViewController) }
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
-    private var runningStartedAt = 0L
-
     private var taskBeans = mutableListOf<DailyTaskBean>()
     private val dailyTaskAdapter by lazy {
         DailyTaskAdapter(taskBeans).apply {
@@ -106,12 +104,6 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     private val timeUpdateRunnable = object : Runnable {
         override fun run() {
             binding.homeDateView.text = "${homeDateFormat.format(Date())}　${TaskScheduler.getDayFlag()}"
-            if (TaskScheduler.isRunning() && runningStartedAt > 0L) {
-                val elapsedSeconds = (SystemClock.elapsedRealtime() - runningStartedAt) / 1000
-                binding.nextTaskTimeView.text = String.format(
-                    Locale.getDefault(), "%02d:%02d", elapsedSeconds / 60, elapsedSeconds % 60
-                )
-            }
             mainHandler.postDelayed(this, 1000)
         }
     }
@@ -165,7 +157,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
         // 显示悬浮窗
         if (Settings.canDrawOverlays(this)) {
-            Intent(this, FloatingWindowService::class.java).apply { startService(this) }
+            ensureFloatingWindowService()
         } else {
             // 悬浮窗权限并显示悬浮窗
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
@@ -194,22 +186,10 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
         // 订阅调度器运行状态 → 按钮 UI
         lifecycleScope.launch {
             TaskScheduler.isRunning.collectLatest { running ->
-                if (running) {
-                    if (runningStartedAt == 0L) runningStartedAt = SystemClock.elapsedRealtime()
-                    binding.executeTaskButton.backgroundTintList = ColorStateList.valueOf(
-                        R.color.accent_red_soft.convertColor(this@MainActivity)
-                    )
-                    binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
-                    binding.executeTaskButton.text = "实时 · 停止"
-                } else {
-                    runningStartedAt = 0L
+                if (!running) {
                     dailyTaskAdapter.updateCurrentTaskState(-1)
-                    binding.executeTaskButton.backgroundTintList = ColorStateList.valueOf(
-                        R.color.accent_red_soft.convertColor(this@MainActivity)
-                    )
-                    binding.executeTaskButton.setTextColor(R.color.accent_red.convertColor(this@MainActivity))
-                    binding.executeTaskButton.text = "已就绪"
                 }
+                updateTaskControlUi(running)
                 updateHomeSummary()
             }
         }
@@ -237,7 +217,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                         binding.tipsView.text = "准备执行第 ${event.index} 个任务"
                         binding.tipsView.setTextColor(R.color.theme_color.convertColor(this@MainActivity))
                         dailyTaskAdapter.updateCurrentTaskState(event.index - 1, event.actualTime)
-                        binding.heroKickerView.text = "TASK RUNNING"
+                        binding.heroKickerView.text = "任务状态 · 调度运行中"
                         binding.heroTaskTitleView.text = "正在等待任务结果"
                         binding.heroProgressView.text = "第 ${event.index} / ${event.total} 项"
 
@@ -251,6 +231,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
                     is TipsEvent.Completed -> {
                         dailyTaskAdapter.updateCurrentTaskState(-1)
+                        binding.heroKickerView.text = "任务状态 · 今日已完成"
                         binding.tipsView.text = "今日任务已全部执行完毕，等待下次任务"
                         binding.tipsView.setTextColor(R.color.ios_green.convertColor(this@MainActivity))
                         LogFileManager.writeLog("今日任务已全部执行完毕")
@@ -299,6 +280,9 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
         super.onResume()
         if (!Settings.canDrawOverlays(this)) {
             "悬浮窗权限未开启，部分功能可能无法正常使用".show(this)
+        } else {
+            // 系统回收普通悬浮窗服务后，回到应用时主动恢复。
+            ensureFloatingWindowService()
         }
         lifecycleScope.launch {
             taskBeans = withContext(Dispatchers.IO) { DatabaseWrapper.loadAllTask() }
@@ -327,8 +311,12 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
             }
         }
 
-        // 只有从目标打卡应用返回时才进入伪装息屏；底部导航回首页不能触发。
-        if (intent.getBooleanExtra(EXTRA_RETURN_FROM_TARGET, false) &&
+        val returnedFromTarget = intent.getBooleanExtra(EXTRA_RETURN_FROM_TARGET, false)
+        val relaunchedFromDesktop = intent.action == Intent.ACTION_MAIN &&
+                intent.hasCategory(Intent.CATEGORY_LAUNCHER)
+
+        // 从目标应用返回或从桌面重新点开时恢复伪灭屏；底部导航回首页不会触发。
+        if ((returnedFromTarget || relaunchedFromDesktop) &&
             !maskViewController.isMaskVisible()
         ) {
             maskViewController.showMaskView()
@@ -542,11 +530,12 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
     private suspend fun updateHomeSummary() {
         val now = LocalTime.now()
         val enabledTasks = taskBeans.filter { it.isEnabled }
-        val nextBean = enabledTasks
-            .firstOrNull { bean -> runCatching { LocalTime.parse(bean.time).isAfter(now) }.getOrDefault(false) }
-        val next = enabledTasks
-            .mapNotNull { bean -> runCatching { LocalTime.parse(bean.time) }.getOrNull() }
-            .firstOrNull { it.isAfter(now) }
+        val nextTask = enabledTasks.mapNotNull { bean ->
+            runCatching { LocalTime.parse(bean.time) }.getOrNull()?.let { bean to it }
+        }.filter { (_, time) -> time.isAfter(now) }
+            .minByOrNull { (_, time) -> time }
+        val nextBean = nextTask?.first
+        val next = nextTask?.second
 
         val periods = withContext(Dispatchers.IO) { LeaveManager.periodsFor(LocalDate.now()) }
         val allDayLeave = LeavePeriod.ALL_DAY in periods ||
@@ -561,28 +550,42 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
         when {
             allDayLeave -> {
-                binding.heroKickerView.text = "REST DAY"
+                updateTaskControlUi(
+                    running = TaskScheduler.isRunning(),
+                    statusText = if (TaskScheduler.isRunning()) "任务状态 · 今日休息，调度守护中" else "任务状态 · 今日休息"
+                )
                 binding.nextTaskTimeView.text = "今天，\n安心休息。"
                 binding.nextTaskTimeView.textSize = 38f
                 binding.nextTaskTimeView.letterSpacing = -0.04f
                 binding.heroTaskTitleView.text = "全部任务已暂停 · 明天自动恢复"
                 binding.tipsView.text = "请假优先级高于日常任务规则"
                 binding.repeatTimeView.text = "无需手动开启"
-                binding.executeTaskButton.text = "全天请假"
-                binding.executeTaskButton.isEnabled = TaskScheduler.isRunning()
                 binding.aiInsightNoteView.text = "已识别全天请假，任务将在明天自动恢复"
             }
             TaskScheduler.isRunning() -> {
-                binding.heroKickerView.text = "TASK RUNNING"
+                val completedToday = next == null
+                updateTaskControlUi(
+                    running = true,
+                    statusText = if (completedToday) "任务状态 · 今日已完成" else "任务状态 · 调度运行中"
+                )
+                binding.nextTaskTimeView.text = next?.toString()?.take(5) ?: "完成"
                 binding.nextTaskTimeView.textSize = 52f
                 binding.nextTaskTimeView.letterSpacing = -0.06f
-                binding.heroTaskTitleView.text = "${nextBean?.displayName() ?: "今日任务"}　等待结果通知"
-                binding.repeatTimeView.text = "目标应用运行中"
+                binding.heroTaskTitleView.text = if (completedToday) {
+                    "今日任务已结束 · 明日自动继续"
+                } else {
+                    "${nextBean?.displayName() ?: "下一项任务"}　等待执行"
+                }
+                binding.repeatTimeView.text = if (completedToday) "调度守护中" else "下一个任务已进入调度"
                 binding.executeTaskButton.isEnabled = true
-                binding.aiInsightNoteView.text = "目标应用运行正常，正在等待结果通知"
+                binding.aiInsightNoteView.text = if (completedToday) {
+                    "今日任务已经结束，调度器会在明天自动继续"
+                } else {
+                    "任务调度正在运行，可随时点击暂停"
+                }
             }
             else -> {
-                binding.heroKickerView.text = "NEXT TASK"
+                updateTaskControlUi(running = false)
                 binding.nextTaskTimeView.text = next?.toString()?.take(5) ?: "--:--"
                 binding.nextTaskTimeView.textSize = 54f
                 binding.nextTaskTimeView.letterSpacing = -0.06f
@@ -597,11 +600,42 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                 val random = SaveKeyValues.loadBoolean(Constant.RANDOM_TIME_KEY, true)
                 binding.repeatTimeView.text = if (next == null) "等待明日任务" else if (random) "随机 ±$range 分钟" else "按计划时间执行"
                 binding.tipsView.text = if (next == null) "今天已无待执行时间" else "通知、权限与日期规则已检查"
-                binding.executeTaskButton.text = "已就绪"
-                binding.executeTaskButton.isEnabled = enabledTasks.isNotEmpty()
                 binding.aiInsightNoteView.text = if (enabledTasks.isEmpty()) "还没有任务，添加后即可开始" else "权限、网络与日期规则正常，可按时执行"
             }
         }
+    }
+
+    private fun updateTaskControlUi(running: Boolean, statusText: String? = null) {
+        val hasEnabledTasks = taskBeans.any { it.isEnabled }
+        binding.heroKickerView.text = statusText ?: if (running) {
+            "任务状态 · 调度运行中"
+        } else {
+            "任务状态 · 已暂停"
+        }
+        binding.executeTaskButton.apply {
+            isEnabled = running || hasEnabledTasks
+            if (running) {
+                text = "暂停任务"
+                setIconResource(R.drawable.ic_task_paused_modern)
+                backgroundTintList = ColorStateList.valueOf(
+                    R.color.accent_red_soft.convertColor(this@MainActivity)
+                )
+                setTextColor(R.color.accent_red.convertColor(this@MainActivity))
+                iconTint = ColorStateList.valueOf(R.color.accent_red.convertColor(this@MainActivity))
+            } else {
+                text = "启动任务"
+                setIconResource(R.drawable.ic_play_modern)
+                backgroundTintList = ColorStateList.valueOf(
+                    R.color.accent_red_deep.convertColor(this@MainActivity)
+                )
+                setTextColor(R.color.white.convertColor(this@MainActivity))
+                iconTint = ColorStateList.valueOf(R.color.white.convertColor(this@MainActivity))
+            }
+        }
+    }
+
+    private fun ensureFloatingWindowService() {
+        startService(Intent(this, FloatingWindowService::class.java))
     }
 
     private fun checkForUpdates(force: Boolean, showNoUpdateMessage: Boolean) {
@@ -707,9 +741,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
      * */
     private val overlayPermissionLauncher = registerForActivityResult(permissionContract) {
         if (Settings.canDrawOverlays(this)) {
-            Intent(this, FloatingWindowService::class.java).apply {
-                startService(this)
-            }
+            ensureFloatingWindowService()
         }
     }
 }

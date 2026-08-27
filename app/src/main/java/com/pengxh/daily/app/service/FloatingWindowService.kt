@@ -75,24 +75,14 @@ class FloatingWindowService : Service(), CoroutineScope by CoroutineScope(Dispat
             }
         }
 
-        // 收集悬浮窗控制事件
+        // 收集可恢复的悬浮窗状态。服务重启后也能立刻拿到当前倒计时，避免窗口消失。
         launch {
-            FloatingWindowController.timeTick.collect { tick ->
-                binding.timeView.text = "${tick}s"
-                binding.root.alpha = if (tick < 1) 0.0f else 1.0f
-            }
-        }
-        launch {
-            FloatingWindowController.overtime.collect { seconds ->
-                binding.timeView.text = "${seconds}s"
-            }
-        }
-        launch {
-            FloatingWindowController.visibility.collect { visible ->
-                if (visible) {
+            FloatingWindowController.state.collect { state ->
+                if (state.visible) {
                     binding.root.alpha = 1.0f
-                    val time = SaveKeyValues.loadInt(
-                        Constant.STAY_OVERTIME_KEY, Constant.DEFAULT_OVER_TIME
+                    val time = state.seconds.takeIf { it > 0 } ?: SaveKeyValues.loadInt(
+                        Constant.STAY_OVERTIME_KEY,
+                        Constant.DEFAULT_OVER_TIME
                     )
                     binding.timeView.text = "${time}s"
                 } else {

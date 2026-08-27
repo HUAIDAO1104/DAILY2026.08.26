@@ -17,10 +17,12 @@ object LocalCommandPlanner {
         // 任务列表操作
         val times = extractTimes(text)
         when {
-            containsAny(text, "停用任务", "关闭任务") && times.isNotEmpty() -> {
+            (containsAny(text, "停用任务", "关闭任务") ||
+                    (text.contains("任务") && text.contains("停用"))) && times.isNotEmpty() -> {
                 times.forEach { actions += AiAction(type = AiActionTypes.UPDATE_TASK, time = it, enabled = false) }
             }
-            containsAny(text, "启用任务", "打开任务") && times.isNotEmpty() -> {
+            (containsAny(text, "启用任务", "打开任务") ||
+                    (text.contains("任务") && text.contains("启用"))) && times.isNotEmpty() -> {
                 times.forEach { actions += AiAction(type = AiActionTypes.UPDATE_TASK, time = it, enabled = true) }
             }
             (text.contains("任务") && containsAny(text, "改名为", "重命名为")) && times.isNotEmpty() -> {

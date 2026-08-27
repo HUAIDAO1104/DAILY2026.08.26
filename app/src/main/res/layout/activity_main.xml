@@ -42,11 +42,9 @@
                 <ImageView
                     android:layout_width="34dp"
                     android:layout_height="34dp"
-                    android:background="@drawable/bg_red_gradient_button"
                     android:contentDescription="DailyTask"
-                    android:padding="7dp"
-                    android:src="@drawable/ic_app_mark"
-                    app:tint="@color/white" />
+                    android:scaleType="fitCenter"
+                    android:src="@mipmap/ic_launcher" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -164,8 +162,8 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:letterSpacing="0.12"
-                                android:text="NEXT TASK"
+                                android:letterSpacing="0.04"
+                                android:text="任务状态 · 已暂停"
                                 android:textColor="#A6FFFFFF"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -176,17 +174,20 @@
                                 android:layout_height="40dp"
                                 android:insetTop="0dp"
                                 android:insetBottom="0dp"
-                                android:minWidth="76dp"
+                                android:minWidth="104dp"
                                 android:minHeight="40dp"
-                                android:text="已就绪"
+                                android:text="启动任务"
                                 android:textAllCaps="false"
-                                android:textColor="@color/accent_red"
-                                android:textSize="12sp"
-                                app:backgroundTint="@color/accent_red_soft"
+                                android:textColor="@color/white"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/accent_red_deep"
                                 app:cornerRadius="17dp"
-                                app:icon="@drawable/ic_status_dot"
-                                app:iconSize="10dp"
-                                app:iconTint="@color/accent_red" />
+                                app:icon="@drawable/ic_play_modern"
+                                app:iconGravity="textStart"
+                                app:iconPadding="6dp"
+                                app:iconSize="16dp"
+                                app:iconTint="@color/white" />
                         </LinearLayout>
 
                         <TextView
@@ -471,6 +472,7 @@
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:fontFamily="@font/ds_digital"
+            android:format12Hour="hh:mm"
             android:format24Hour="HH:mm"
             android:textColor="#B3FFFFFF"
             android:textSize="56sp" />

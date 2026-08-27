@@ -13,7 +13,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#3D08080C" />
+        android:background="#A607080B" />
 
     <LinearLayout
         android:id="@+id/assistantContent"

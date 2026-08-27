@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
+import com.pengxh.daily.app.R
 import com.pengxh.daily.app.databinding.ActivityMainBinding
 import com.pengxh.kt.lite.extensions.setScreenBrightness
 import java.util.Random
@@ -39,6 +40,7 @@ class MaskViewController(
 
         // 显示蒙层
         binding.maskView.visibility = View.VISIBLE
+        binding.root.findViewById<View>(R.id.bottomNavContainer).visibility = View.GONE
         currentAnimation?.cancel()
         currentAnimation = ScaleAnimation(1.0f, 1.0f, 0.0f, 1.0f).apply {
             duration = 500
@@ -85,6 +87,7 @@ class MaskViewController(
 
         binding.maskView.visibility = View.GONE
         binding.rootView.visibility = View.VISIBLE
+        binding.root.findViewById<View>(R.id.bottomNavContainer).visibility = View.VISIBLE
         ViewCompat.requestApplyInsets(binding.rootView)
     }
 

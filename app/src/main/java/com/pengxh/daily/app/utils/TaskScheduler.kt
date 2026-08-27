@@ -206,6 +206,8 @@ object TaskScheduler {
                 Constant.STAY_OVERTIME_KEY, Constant.DEFAULT_OVER_TIME
             )
 
+            // 在切换到目标应用前先发布首帧倒计时；悬浮窗服务即使刚重启也能恢复显示。
+            FloatingWindowController.updateTime(timeoutSeconds)
             DailyTaskApplication.get().openApplication()
 
             // Kotlin语法糖——竞态保护：select 只取先完成的分支，另一个自动取消

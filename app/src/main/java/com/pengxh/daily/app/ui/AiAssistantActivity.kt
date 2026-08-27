@@ -29,6 +29,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.pengxh.daily.app.R
 import com.pengxh.daily.app.ai.AiConfigStore
+import com.pengxh.daily.app.ai.AiChatTurn
 import com.pengxh.daily.app.ai.AiModelOption
 import com.pengxh.daily.app.ai.AiPlanner
 import com.pengxh.daily.app.ai.DailyTaskOperations
@@ -47,6 +48,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     private val planner by lazy { AiPlanner(configStore) }
     private val operations by lazy { DailyTaskOperations(this) }
     private var isBusy = false
+    private val conversationHistory = mutableListOf<AiChatTurn>()
 
     override fun initViewBinding() = ActivityAiAssistantBinding.inflate(layoutInflater)
 
@@ -91,10 +93,12 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     override fun initOnCreate(savedInstanceState: Bundle?) {
         overridePendingTransition(R.anim.ai_enter, R.anim.stay)
         setAssistantState(AiCompanionView.State.IDLE)
+        val welcome = "你可以直接告诉我要做什么，也可以自然地问我任务和设置问题。我会结合上下文理解，并在修改前列出完整计划。\n\n例如：‘明天下午请假’、‘把 8 点和 9 点任务都推迟半小时’。"
         addMessage(
-            "你可以直接告诉我要做什么。我会先列出具体修改，只有你确认后才会执行。\n\n例如：‘明天下午请假’、‘把 8 点任务改到 8 点半’。",
+            welcome,
             fromUser = false
         )
+        conversationHistory += AiChatTurn("assistant", welcome)
     }
 
     override fun initEvent() {
@@ -156,22 +160,37 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             .start()
         binding.promptInput.text?.clear()
         addMessage(command, fromUser = true)
+        val historySnapshot = conversationHistory.takeLast(10)
+        conversationHistory += AiChatTurn("user", command)
         setLoading(true)
         lifecycleScope.launch {
             try {
                 val state = withContext(Dispatchers.IO) { operations.buildStateJson() }
-                val plan = planner.createPlan(command, state)
+                val plan = planner.createPlan(command, state, historySnapshot)
                 if (plan.actions.isEmpty()) {
                     setAssistantState(AiCompanionView.State.SPEAKING)
-                    addMessage(plan.reply.ifBlank { "这句话没有包含明确的修改操作。你可以说得更具体一些。" }, false)
+                    val reply = plan.reply.ifBlank { "我还不能确定你想修改什么，可以换一种更具体的说法。" }
+                    addMessage(reply, false)
+                    conversationHistory += AiChatTurn("assistant", reply)
                     celebrateAssistant()
                 } else {
                     val validated = operations.validate(plan)
                     addPlanCard(validated)
+                    conversationHistory += AiChatTurn(
+                        "assistant",
+                        buildString {
+                            append(validated.summary)
+                            validated.previews.forEachIndexed { index, preview ->
+                                append("\n${index + 1}. $preview")
+                            }
+                        }
+                    )
                     setAssistantState(AiCompanionView.State.AWARE)
                 }
             } catch (e: Exception) {
-                addMessage(e.message ?: "处理失败，请稍后重试", false)
+                val error = e.message ?: "处理失败，请稍后重试"
+                addMessage(error, false)
+                conversationHistory += AiChatTurn("assistant", error)
                 showAssistantError()
             } finally {
                 setLoading(false)
@@ -209,6 +228,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+        lateinit var confirm: MaterialButton
         val cancel = MaterialButton(this).apply {
             text = "取消"
             setTextColor(getColor(R.color.text_secondary_dark))
@@ -217,13 +237,15 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             setOnClickListener {
                 card.alpha = 0.5f
                 isEnabled = false
+                confirm.isEnabled = false
                 addMessage("已取消，没有修改任何内容。", false)
+                conversationHistory += AiChatTurn("assistant", "用户取消了上一项操作计划，没有执行修改。")
             }
         }
-        val confirm = MaterialButton(this).apply {
+        confirm = MaterialButton(this).apply {
             text = if (plan.requiresDangerConfirmation) "继续核对" else "确认执行"
             setTextColor(getColor(R.color.white))
-            backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red_deep))
             cornerRadius = 12.dp2px(this@AiAssistantActivity)
             setOnClickListener {
                 card.alpha = 0.5f
@@ -263,7 +285,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         val execute = MaterialButton(this).apply {
             text = "确认并执行"
             setTextColor(getColor(R.color.white))
-            backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent_red_deep))
             cornerRadius = 12.dp2px(this@AiAssistantActivity)
             setOnClickListener { isEnabled = false; warning.alpha = 0.5f; executePlan(plan) }
         }
@@ -277,10 +299,14 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         lifecycleScope.launch {
             try {
                 val results = withContext(Dispatchers.IO) { operations.execute(plan) }
-                addMessage("操作完成\n${results.joinToString("\n") { "• $it" }}", false)
+                val reply = "操作完成\n${results.joinToString("\n") { "• $it" }}"
+                addMessage(reply, false)
+                conversationHistory += AiChatTurn("assistant", reply)
                 celebrateAssistant()
             } catch (e: Exception) {
-                addMessage("执行中止：${e.message ?: "未知错误"}\n已完成的操作可能已生效，可通过配置快照恢复。", false)
+                val reply = "执行中止：${e.message ?: "未知错误"}\n已完成的操作可能已生效，可通过配置快照恢复。"
+                addMessage(reply, false)
+                conversationHistory += AiChatTurn("assistant", reply)
                 showAssistantError()
             } finally {
                 setLoading(false)

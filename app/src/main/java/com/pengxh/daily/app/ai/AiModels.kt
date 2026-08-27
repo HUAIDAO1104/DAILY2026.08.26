@@ -6,6 +6,11 @@ data class AiActionPlan(
     val reply: String = ""
 )
 
+data class AiChatTurn(
+    val role: String,
+    val content: String
+)
+
 data class AiAction(
     val type: String = "",
     val id: Int? = null,
