@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
@@ -16,12 +17,14 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.animation.LinearInterpolator
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * DailyTask 的 AI 形象。所有图形都在 Canvas 中绘制，不依赖文字、emoji 或位图资源。
+ * 参考 luma-ai-voice-assistant 方案 1 的原生 Canvas 移植：透明液态球、双轨道与状态眼睛。
+ * 颜色跟随 DailyTask 的暗红主题，不使用文字、emoji 或预渲染位图。
  */
 class AiCompanionView @JvmOverloads constructor(
     context: Context,
@@ -30,22 +33,32 @@ class AiCompanionView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     enum class State {
-        IDLE, AWARE, THINKING, HAPPY, ERROR, SLEEPING
+        IDLE,
+        AWARE,
+        SLEEPING,
+        LISTENING,
+        TRANSCRIBING,
+        THINKING,
+        SPEAKING,
+        SUCCESS,
+        INTERRUPTED,
+        ERROR
     }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val bodyPath = Path()
+    private val liquidPath = Path()
+    private val secondaryLiquidPath = Path()
     private val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = 5200L
+        duration = 1_000L
         repeatCount = ValueAnimator.INFINITE
         interpolator = LinearInterpolator()
-        addUpdateListener {
-            phase = it.animatedValue as Float
-            invalidate()
-        }
+        addUpdateListener { invalidate() }
     }
-    private var phase = 0f
+
     private var pressedScale = 1f
+    private var gazeX = 0f
+    private var gazeY = 0f
     private var stateStartedAt = SystemClock.uptimeMillis()
 
     var state: State = State.IDLE
@@ -80,203 +93,417 @@ class AiCompanionView @JvmOverloads constructor(
         super.onDraw(canvas)
         val size = min(width, height).toFloat()
         if (size <= 0f) return
+
+        val compact = size < 64f * resources.displayMetrics.density
         val cx = width / 2f
-        val cy = height / 2f + sin(phase * PI * 2).toFloat() * size * floatAmount()
-        val bodyRadius = size * 0.335f
-        val scale = pressedScale * stateScale()
+        val motion = motionPhase()
+        val floatY = sin(motion * PI.toFloat() * 2f) * size * floatAmount()
+        val cy = height / 2f + floatY
+        val bodyRadius = size * if (compact) 0.34f else 0.355f
 
         canvas.save()
-        canvas.scale(scale, scale, cx, cy)
-        drawAura(canvas, cx, cy, bodyRadius)
-        drawOrbits(canvas, cx, cy, bodyRadius)
-        drawBody(canvas, cx, cy, bodyRadius)
+        canvas.scale(pressedScale * stateScale(), pressedScale * stateScale(), cx, cy)
+        drawAura(canvas, cx, cy, bodyRadius, compact)
+        drawOrbits(canvas, cx, cy, bodyRadius, compact)
+        drawGlassBody(canvas, cx, cy, bodyRadius, motion)
         drawEyes(canvas, cx, cy, bodyRadius)
         canvas.restore()
     }
 
-    private fun drawAura(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val pulse = 1f + 0.08f * sin(phase * PI * 4).toFloat()
+    private fun drawAura(canvas: Canvas, cx: Float, cy: Float, radius: Float, compact: Boolean) {
+        if (compact) return
+        val pulse = when (state) {
+            State.LISTENING, State.SPEAKING -> 1f + 0.08f * sin(motionPhase() * PI.toFloat() * 2f)
+            State.SUCCESS -> 1.14f
+            else -> 1f
+        }
         paint.style = Paint.Style.FILL
         paint.shader = RadialGradient(
             cx,
-            cy,
+            cy + radius * 0.35f,
             radius * 1.65f * pulse,
-            intArrayOf(Color.argb(82, 255, 54, 91), Color.argb(28, 190, 12, 48), Color.TRANSPARENT),
-            floatArrayOf(0f, 0.55f, 1f),
+            intArrayOf(
+                Color.argb(74, 255, 83, 112),
+                Color.argb(32, 181, 22, 55),
+                Color.TRANSPARENT
+            ),
+            floatArrayOf(0f, 0.48f, 1f),
             Shader.TileMode.CLAMP
         )
         canvas.drawCircle(cx, cy, radius * 1.65f * pulse, paint)
         paint.shader = null
     }
 
-    private fun drawOrbits(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+    private fun drawOrbits(canvas: Canvas, cx: Float, cy: Float, radius: Float, compact: Boolean) {
+        val outerRadius = radius * 1.34f
+        val innerRadius = radius * 1.13f
+        val time = SystemClock.uptimeMillis() / 1000f
         val speed = when (state) {
-            State.THINKING -> 4.2f
-            State.AWARE -> 1.8f
-            State.HAPPY -> 2.2f
-            State.ERROR -> 0.35f
-            State.SLEEPING -> 0.2f
-            State.IDLE -> 1f
+            State.TRANSCRIBING -> 2.8f
+            State.THINKING -> 1.85f
+            State.LISTENING -> 1.2f
+            State.SPEAKING -> 0.9f
+            State.SLEEPING -> 0.16f
+            State.ERROR, State.INTERRUPTED -> 0.1f
+            else -> 0.34f
         }
-        val alpha = when (state) {
-            State.SLEEPING -> 30
-            State.ERROR -> 70
-            else -> 105
+        val ringAlpha = when (state) {
+            State.SLEEPING -> 34
+            State.ERROR, State.INTERRUPTED -> 52
+            State.LISTENING, State.THINKING -> 125
+            else -> 78
         }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = maxOf(1f, radius * 0.022f)
-        paint.color = Color.argb(alpha, 255, 92, 116)
-        paint.pathEffect = DashPathEffect(floatArrayOf(radius * 0.09f, radius * 0.13f), 0f)
-        val orbit = RectF(cx - radius * 1.37f, cy - radius * 1.14f, cx + radius * 1.37f, cy + radius * 1.14f)
-        canvas.save()
-        canvas.rotate(phase * 360f * speed, cx, cy)
-        canvas.drawOval(orbit, paint)
-        paint.pathEffect = null
 
-        paint.style = Paint.Style.FILL
-        paint.color = Color.argb(230, 255, 109, 132)
-        val nodeAngle = phase * PI.toFloat() * 2f * speed
-        val nx = cx + cos(nodeAngle) * radius * 1.37f
-        val ny = cy + sin(nodeAngle) * radius * 1.14f
-        canvas.drawCircle(nx, ny, maxOf(1.6f, radius * 0.045f), paint)
-        canvas.restore()
+        paint.shader = null
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = maxOf(1f, radius * 0.016f)
+        paint.color = Color.argb(ringAlpha, 255, 101, 126)
+        paint.pathEffect = DashPathEffect(
+            floatArrayOf(maxOf(1f, radius * 0.035f), maxOf(3f, radius * 0.09f)),
+            time * radius * 0.2f
+        )
+        canvas.drawCircle(cx, cy, outerRadius, paint)
+
+        paint.pathEffect = null
+        paint.color = Color.argb(ringAlpha + 18, 232, 64, 95)
+        val innerBounds = RectF(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius)
+        if (state == State.THINKING || state == State.TRANSCRIBING) {
+            canvas.drawArc(innerBounds, time * 220f * speed, 268f, false, paint)
+        } else {
+            canvas.drawCircle(cx, cy, innerRadius, paint)
+        }
+
+        if (!compact) {
+            paint.style = Paint.Style.FILL
+            val outerAngle = time * speed * PI.toFloat() * 2f
+            paint.color = Color.argb(230, 255, 93, 119)
+            canvas.drawCircle(
+                cx + cos(outerAngle) * outerRadius,
+                cy + sin(outerAngle) * outerRadius,
+                maxOf(2f, radius * 0.035f),
+                paint
+            )
+            val innerAngle = -time * speed * 1.35f * PI.toFloat() * 2f + 1.4f
+            paint.color = Color.argb(170, 255, 173, 187)
+            canvas.drawCircle(
+                cx + cos(innerAngle) * innerRadius,
+                cy + sin(innerAngle) * innerRadius,
+                maxOf(1.6f, radius * 0.025f),
+                paint
+            )
+        }
     }
 
-    private fun drawBody(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val motion = when (state) {
-            State.THINKING -> 0.065f
-            State.AWARE -> 0.035f
-            State.ERROR -> 0.025f
-            State.SLEEPING -> 0.012f
-            else -> 0.025f
-        }
-        val p = phase * PI.toFloat() * 2f
-        val left = radius * (1f + sin(p) * motion)
-        val right = radius * (1f + cos(p * 1.1f) * motion)
-        val top = radius * (1f + sin(p + 1.3f) * motion)
-        val bottom = radius * (1f + cos(p + 0.7f) * motion)
+    private fun drawGlassBody(canvas: Canvas, cx: Float, cy: Float, radius: Float, motion: Float) {
+        createBodyPath(cx, cy, radius, motion)
 
-        bodyPath.reset()
-        bodyPath.moveTo(cx, cy - top)
-        bodyPath.cubicTo(cx + right * 0.78f, cy - top, cx + right, cy - bottom * 0.58f, cx + right, cy)
-        bodyPath.cubicTo(cx + right, cy + bottom * 0.72f, cx + right * 0.56f, cy + bottom, cx, cy + bottom)
-        bodyPath.cubicTo(cx - left * 0.68f, cy + bottom, cx - left, cy + bottom * 0.55f, cx - left, cy)
-        bodyPath.cubicTo(cx - left, cy - top * 0.7f, cx - left * 0.52f, cy - top, cx, cy - top)
-        bodyPath.close()
-
-        val tint = when (state) {
-            State.ERROR -> intArrayOf(Color.rgb(255, 196, 201), Color.rgb(144, 34, 48), Color.rgb(55, 13, 24))
-            State.SLEEPING -> intArrayOf(Color.rgb(225, 181, 189), Color.rgb(115, 35, 53), Color.rgb(45, 17, 26))
-            else -> intArrayOf(Color.rgb(255, 222, 225), Color.rgb(226, 48, 79), Color.rgb(91, 8, 31))
-        }
         paint.style = Paint.Style.FILL
         paint.shader = RadialGradient(
-            cx - radius * 0.34f,
-            cy - radius * 0.4f,
-            radius * 1.7f,
-            tint,
-            floatArrayOf(0f, 0.46f, 1f),
+            cx - radius * 0.38f,
+            cy - radius * 0.44f,
+            radius * 1.65f,
+            when (state) {
+                State.ERROR -> intArrayOf(
+                    Color.argb(244, 255, 255, 255),
+                    Color.argb(218, 237, 216, 219),
+                    Color.argb(184, 132, 96, 103)
+                )
+                State.SLEEPING -> intArrayOf(
+                    Color.argb(238, 255, 255, 255),
+                    Color.argb(195, 244, 225, 230),
+                    Color.argb(145, 126, 61, 79)
+                )
+                else -> intArrayOf(
+                    Color.argb(248, 255, 255, 255),
+                    Color.argb(215, 255, 224, 231),
+                    Color.argb(180, 181, 22, 55)
+                )
+            },
+            floatArrayOf(0f, 0.56f, 1f),
             Shader.TileMode.CLAMP
         )
         canvas.drawPath(bodyPath, paint)
         paint.shader = null
 
+        canvas.save()
+        canvas.clipPath(bodyPath)
+        drawLiquidLayers(canvas, cx, cy, radius, motion)
+        drawHighlights(canvas, cx, cy, radius)
+        canvas.restore()
+
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = maxOf(1f, radius * 0.025f)
-        paint.color = Color.argb(150, 255, 255, 255)
+        paint.strokeWidth = maxOf(1.1f, radius * 0.026f)
+        paint.color = Color.argb(215, 255, 255, 255)
         canvas.drawPath(bodyPath, paint)
+        paint.strokeWidth = maxOf(0.8f, radius * 0.012f)
+        paint.color = Color.argb(118, 255, 205, 215)
+        canvas.drawCircle(cx, cy, radius * 0.93f, paint)
+    }
+
+    private fun createBodyPath(cx: Float, cy: Float, radius: Float, motion: Float) {
+        val deformation = when (state) {
+            State.LISTENING -> 0.065f
+            State.TRANSCRIBING, State.THINKING -> 0.055f
+            State.SPEAKING -> 0.07f
+            State.INTERRUPTED, State.ERROR -> 0.025f
+            State.SLEEPING -> 0.018f
+            else -> 0.025f
+        }
+        val wave = sin(motion * PI.toFloat() * 2f)
+        val cross = cos(motion * PI.toFloat() * 2f)
+        val left = radius * (1f + wave * deformation)
+        val right = radius * (1f - wave * deformation * 0.72f)
+        val top = radius * (1f + cross * deformation * 0.62f)
+        val bottom = radius * (1f - cross * deformation * 0.72f)
+
+        bodyPath.reset()
+        bodyPath.moveTo(cx, cy - top)
+        bodyPath.cubicTo(cx + right * 0.58f, cy - top, cx + right, cy - right * 0.6f, cx + right, cy)
+        bodyPath.cubicTo(cx + right, cy + bottom * 0.63f, cx + bottom * 0.58f, cy + bottom, cx, cy + bottom)
+        bodyPath.cubicTo(cx - left * 0.62f, cy + bottom, cx - left, cy + left * 0.56f, cx - left, cy)
+        bodyPath.cubicTo(cx - left, cy - top * 0.62f, cx - top * 0.6f, cy - top, cx, cy - top)
+        bodyPath.close()
+    }
+
+    private fun drawLiquidLayers(canvas: Canvas, cx: Float, cy: Float, radius: Float, motion: Float) {
+        val liquidShift = when (state) {
+            State.THINKING -> sin(motion * PI.toFloat() * 2f) * radius * 0.18f
+            State.SPEAKING, State.LISTENING -> sin(motion * PI.toFloat() * 2f) * radius * 0.08f
+            else -> sin(motion * PI.toFloat() * 2f) * radius * 0.035f
+        }
+
+        liquidPath.reset()
+        liquidPath.moveTo(cx - radius * 1.12f, cy + radius * 0.02f + liquidShift)
+        liquidPath.cubicTo(
+            cx - radius * 0.62f,
+            cy - radius * 0.04f,
+            cx - radius * 0.42f,
+            cy + radius * 0.76f,
+            cx + radius * 0.08f,
+            cy + radius * 0.72f
+        )
+        liquidPath.cubicTo(
+            cx + radius * 0.62f,
+            cy + radius * 0.68f,
+            cx + radius * 0.57f,
+            cy + radius * 0.02f,
+            cx + radius * 1.1f,
+            cy - radius * 0.12f + liquidShift * 0.35f
+        )
+        liquidPath.lineTo(cx + radius * 1.2f, cy + radius * 1.2f)
+        liquidPath.lineTo(cx - radius * 1.2f, cy + radius * 1.2f)
+        liquidPath.close()
 
         paint.style = Paint.Style.FILL
-        paint.color = Color.argb(132, 255, 255, 255)
+        paint.shader = LinearGradient(
+            cx - radius,
+            cy,
+            cx + radius,
+            cy + radius,
+            intArrayOf(
+                Color.argb(232, 219, 25, 65),
+                Color.argb(245, 153, 12, 47),
+                Color.argb(238, 92, 5, 29)
+            ),
+            floatArrayOf(0f, 0.5f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawPath(liquidPath, paint)
+        paint.shader = null
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = maxOf(1f, radius * 0.025f)
+        paint.color = Color.argb(175, 255, 196, 207)
+        canvas.drawPath(liquidPath, paint)
+
+        secondaryLiquidPath.reset()
+        secondaryLiquidPath.moveTo(cx - radius * 1.04f, cy - radius * 0.66f)
+        secondaryLiquidPath.cubicTo(
+            cx - radius * 0.55f,
+            cy - radius * 1.08f,
+            cx + radius * 0.18f,
+            cy - radius * 0.9f,
+            cx + radius * 0.1f,
+            cy - radius * 0.34f
+        )
+        secondaryLiquidPath.cubicTo(
+            cx + radius * 0.02f,
+            cy + radius * 0.08f,
+            cx - radius * 0.56f,
+            cy + radius * 0.04f,
+            cx - radius * 1.02f,
+            cy - radius * 0.1f
+        )
+        secondaryLiquidPath.close()
+        paint.style = Paint.Style.FILL
+        paint.shader = LinearGradient(
+            cx - radius,
+            cy - radius,
+            cx + radius * 0.35f,
+            cy,
+            intArrayOf(
+                Color.argb(210, 255, 255, 255),
+                Color.argb(170, 255, 190, 203),
+                Color.argb(128, 255, 83, 112)
+            ),
+            null,
+            Shader.TileMode.CLAMP
+        )
+        canvas.drawPath(secondaryLiquidPath, paint)
+        paint.shader = null
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = maxOf(1f, radius * 0.02f)
+        paint.color = Color.argb(190, 255, 255, 255)
+        canvas.drawPath(secondaryLiquidPath, paint)
+    }
+
+    private fun drawHighlights(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(148, 255, 255, 255)
+        canvas.save()
+        canvas.rotate(-24f, cx - radius * 0.3f, cy - radius * 0.48f)
         canvas.drawOval(
-            RectF(cx - radius * 0.48f, cy - radius * 0.63f, cx + radius * 0.08f, cy - radius * 0.34f),
+            RectF(
+                cx - radius * 0.57f,
+                cy - radius * 0.64f,
+                cx - radius * 0.02f,
+                cy - radius * 0.41f
+            ),
             paint
         )
+        canvas.restore()
+        paint.color = Color.argb(78, 255, 255, 255)
+        canvas.drawCircle(cx + radius * 0.53f, cy - radius * 0.46f, radius * 0.12f, paint)
     }
 
     private fun drawEyes(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val blink = blinkScale()
-        val eyeY = cy + radius * 0.04f
-        val gap = radius * 0.42f
-        val eyeWidth = maxOf(1.8f, radius * 0.15f)
-        val eyeHeight = maxOf(3f, radius * 0.42f) * blink
+        val eyeY = cy - radius * 0.02f + gazeY * radius * 0.08f
+        val gap = when (state) {
+            State.LISTENING -> radius * 0.42f
+            State.SLEEPING, State.TRANSCRIBING, State.ERROR -> radius * 0.27f
+            else -> radius * 0.34f
+        }
+        val eyeColor = if (state == State.ERROR || state == State.INTERRUPTED) {
+            Color.rgb(105, 75, 82)
+        } else {
+            Color.rgb(104, 8, 35)
+        }
         paint.shader = null
+        paint.color = eyeColor
         paint.strokeCap = Paint.Cap.ROUND
-        paint.color = Color.rgb(71, 7, 26)
 
         when (state) {
-            State.HAPPY -> {
+            State.SLEEPING -> {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = maxOf(2f, radius * 0.12f)
-                drawHappyEye(canvas, cx - gap, eyeY, radius)
-                drawHappyEye(canvas, cx + gap, eyeY, radius)
+                paint.strokeWidth = maxOf(2f, radius * 0.07f)
+                drawClosedEye(canvas, cx - gap, eyeY, radius, sleeping = true)
+                drawClosedEye(canvas, cx + gap, eyeY, radius, sleeping = true)
+            }
+            State.TRANSCRIBING -> {
+                paint.style = Paint.Style.FILL
+                val pulse = 0.82f + 0.18f * sin(motionPhase() * PI.toFloat() * 2f)
+                canvas.drawCircle(cx - gap, eyeY, radius * 0.075f * pulse, paint)
+                canvas.drawCircle(cx + gap, eyeY, radius * 0.075f * (1.82f - pulse), paint)
             }
             State.THINKING -> {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = maxOf(2f, radius * 0.11f)
-                canvas.drawLine(cx - gap - radius * 0.12f, eyeY, cx - gap + radius * 0.12f, eyeY - radius * 0.07f, paint)
-                canvas.drawLine(cx + gap - radius * 0.12f, eyeY - radius * 0.07f, cx + gap + radius * 0.12f, eyeY, paint)
+                paint.strokeWidth = maxOf(2f, radius * 0.085f)
+                canvas.drawLine(cx - gap - radius * 0.13f, eyeY, cx - gap + radius * 0.13f, eyeY - radius * 0.06f, paint)
+                canvas.drawLine(cx + gap - radius * 0.13f, eyeY - radius * 0.06f, cx + gap + radius * 0.13f, eyeY, paint)
+            }
+            State.SPEAKING, State.SUCCESS -> {
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = maxOf(2f, radius * 0.075f)
+                drawClosedEye(canvas, cx - gap, eyeY, radius, sleeping = false)
+                drawClosedEye(canvas, cx + gap, eyeY, radius, sleeping = false)
+            }
+            State.INTERRUPTED -> {
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = maxOf(2f, radius * 0.08f)
+                canvas.drawLine(cx - gap - radius * 0.13f, eyeY, cx - gap + radius * 0.13f, eyeY, paint)
+                canvas.drawLine(cx + gap - radius * 0.13f, eyeY, cx + gap + radius * 0.13f, eyeY, paint)
             }
             State.ERROR -> {
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = maxOf(2f, radius * 0.11f)
+                paint.strokeWidth = maxOf(2f, radius * 0.085f)
                 canvas.drawLine(cx - gap - radius * 0.13f, eyeY - radius * 0.06f, cx - gap + radius * 0.13f, eyeY + radius * 0.04f, paint)
                 canvas.drawLine(cx + gap - radius * 0.13f, eyeY + radius * 0.04f, cx + gap + radius * 0.13f, eyeY - radius * 0.06f, paint)
             }
-            State.SLEEPING -> {
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = maxOf(2f, radius * 0.1f)
-                canvas.drawArc(RectF(cx - gap - radius * 0.18f, eyeY - radius * 0.05f, cx - gap + radius * 0.18f, eyeY + radius * 0.18f), 200f, 140f, false, paint)
-                canvas.drawArc(RectF(cx + gap - radius * 0.18f, eyeY - radius * 0.05f, cx + gap + radius * 0.18f, eyeY + radius * 0.18f), 200f, 140f, false, paint)
-            }
-            State.IDLE, State.AWARE -> {
-                val gaze = if (state == State.AWARE) radius * 0.05f else sin(phase * PI * 2).toFloat() * radius * 0.025f
+            State.IDLE, State.AWARE, State.LISTENING -> {
+                val blink = blinkScale()
+                val width = maxOf(2.2f, radius * 0.105f)
+                val baseHeight = when (state) {
+                    State.AWARE -> radius * 0.34f
+                    State.LISTENING -> radius * 0.38f
+                    else -> radius * 0.31f
+                }
+                val height = maxOf(2f, baseHeight * blink)
+                val gaze = gazeX * radius * 0.08f
                 paint.style = Paint.Style.FILL
                 canvas.drawRoundRect(
-                    RectF(cx - gap - eyeWidth / 2, eyeY - eyeHeight / 2, cx - gap + eyeWidth / 2, eyeY + eyeHeight / 2),
-                    eyeWidth,
-                    eyeWidth,
+                    RectF(cx - gap + gaze - width / 2f, eyeY - height / 2f, cx - gap + gaze + width / 2f, eyeY + height / 2f),
+                    width,
+                    width,
                     paint
                 )
                 canvas.drawRoundRect(
-                    RectF(cx + gap - eyeWidth / 2, eyeY - eyeHeight / 2, cx + gap + eyeWidth / 2, eyeY + eyeHeight / 2),
-                    eyeWidth,
-                    eyeWidth,
+                    RectF(cx + gap + gaze - width / 2f, eyeY - height / 2f, cx + gap + gaze + width / 2f, eyeY + height / 2f),
+                    width,
+                    width,
                     paint
                 )
-                if (radius > 22f && blink > 0.35f) {
-                    paint.color = Color.argb(200, 255, 235, 238)
-                    canvas.drawCircle(cx - gap + gaze, eyeY - eyeHeight * 0.18f, eyeWidth * 0.2f, paint)
-                    canvas.drawCircle(cx + gap + gaze, eyeY - eyeHeight * 0.18f, eyeWidth * 0.2f, paint)
-                }
             }
         }
         paint.strokeCap = Paint.Cap.BUTT
     }
 
-    private fun drawHappyEye(canvas: Canvas, x: Float, y: Float, radius: Float) {
-        canvas.drawArc(RectF(x - radius * 0.2f, y - radius * 0.1f, x + radius * 0.2f, y + radius * 0.22f), 195f, 150f, false, paint)
+    private fun drawClosedEye(canvas: Canvas, x: Float, y: Float, radius: Float, sleeping: Boolean) {
+        val bounds = if (sleeping) {
+            RectF(x - radius * 0.16f, y - radius * 0.03f, x + radius * 0.16f, y + radius * 0.16f)
+        } else {
+            RectF(x - radius * 0.17f, y - radius * 0.08f, x + radius * 0.17f, y + radius * 0.18f)
+        }
+        canvas.drawArc(bounds, 200f, 140f, false, paint)
+    }
+
+    private fun motionPhase(): Float {
+        val duration = when (state) {
+            State.IDLE, State.AWARE -> 4_600L
+            State.SLEEPING -> 6_000L
+            State.LISTENING -> 900L
+            State.TRANSCRIBING -> 1_000L
+            State.THINKING -> 1_200L
+            State.SPEAKING -> 780L
+            State.SUCCESS -> 1_200L
+            State.INTERRUPTED -> 1_800L
+            State.ERROR -> 880L
+        }
+        return ((SystemClock.uptimeMillis() - stateStartedAt) % duration).toFloat() / duration
     }
 
     private fun blinkScale(): Float {
-        if (state != State.IDLE && state != State.AWARE) return 1f
-        val cycle = (phase * 5.2f) % 1f
-        return if (cycle > 0.93f) ((cycle - 0.93f) / 0.035f - 1f).let { kotlin.math.abs(it).coerceIn(0.08f, 1f) } else 1f
+        val cycle = (SystemClock.uptimeMillis() % 5_400L) / 5_400f
+        return if (cycle in 0.455f..0.485f) {
+            (abs(cycle - 0.47f) / 0.015f).coerceIn(0.08f, 1f)
+        } else {
+            1f
+        }
     }
 
     private fun floatAmount(): Float = when (state) {
         State.THINKING -> 0.018f
-        State.HAPPY -> 0.026f
-        State.ERROR -> 0.006f
-        State.SLEEPING -> 0.008f
-        else -> 0.012f
+        State.SPEAKING -> 0.021f
+        State.SUCCESS -> 0.026f
+        State.ERROR, State.INTERRUPTED -> 0.005f
+        State.SLEEPING -> 0.007f
+        else -> 0.014f
     }
 
     private fun stateScale(): Float {
-        val elapsed = (SystemClock.uptimeMillis() - stateStartedAt).coerceAtMost(600L) / 600f
+        val elapsed = (SystemClock.uptimeMillis() - stateStartedAt).coerceAtMost(1_200L) / 1_200f
         return when (state) {
-            State.HAPPY -> 1f + sin(elapsed * PI).toFloat() * 0.1f
-            State.ERROR -> 1f - sin(elapsed * PI * 2).toFloat() * 0.025f
+            State.SUCCESS -> 1f + sin(elapsed * PI).toFloat() * 0.1f
+            State.ERROR -> 1f - abs(sin(elapsed * PI * 4).toFloat()) * 0.02f
             else -> 1f
         }
     }
@@ -284,19 +511,25 @@ class AiCompanionView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isClickable) return false
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                pressedScale = 0.93f
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                pressedScale = if (event.actionMasked == MotionEvent.ACTION_DOWN) 0.95f else 0.98f
+                gazeX = ((event.x / width.coerceAtLeast(1)) - 0.5f).coerceIn(-0.8f, 0.8f)
+                gazeY = ((event.y / height.coerceAtLeast(1)) - 0.5f).coerceIn(-0.6f, 0.6f)
                 invalidate()
                 return true
             }
             MotionEvent.ACTION_UP -> {
                 pressedScale = 1f
+                gazeX = 0f
+                gazeY = 0f
                 invalidate()
-                if (isPointInside(event.x, event.y)) performClick()
+                if (event.x in 0f..width.toFloat() && event.y in 0f..height.toFloat()) performClick()
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
                 pressedScale = 1f
+                gazeX = 0f
+                gazeY = 0f
                 invalidate()
                 return true
             }
@@ -309,16 +542,18 @@ class AiCompanionView @JvmOverloads constructor(
         return true
     }
 
-    private fun isPointInside(x: Float, y: Float) = x in 0f..width.toFloat() && y in 0f..height.toFloat()
-
     private fun updateContentDescription() {
         contentDescription = when (state) {
             State.IDLE -> "AI 助手待命"
             State.AWARE -> "AI 助手正在关注"
-            State.THINKING -> "AI 助手正在思考"
-            State.HAPPY -> "AI 助手已完成"
-            State.ERROR -> "AI 助手遇到问题"
             State.SLEEPING -> "AI 助手休息中"
+            State.LISTENING -> "AI 助手正在聆听"
+            State.TRANSCRIBING -> "AI 助手正在识别"
+            State.THINKING -> "AI 助手正在思考"
+            State.SPEAKING -> "AI 助手正在回答"
+            State.SUCCESS -> "AI 助手已完成"
+            State.INTERRUPTED -> "AI 助手已暂停"
+            State.ERROR -> "AI 助手遇到问题"
         }
     }
 }

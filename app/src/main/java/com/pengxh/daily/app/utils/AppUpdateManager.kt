@@ -23,6 +23,26 @@ data class AppUpdateInfo(
     val downloadUrl: String
 )
 
+data class UpdateDownloadProgress(
+    val downloadedBytes: Long,
+    val totalBytes: Long,
+    val sourceName: String,
+    val sourceIndex: Int,
+    val sourceCount: Int
+) {
+    val percent: Int
+        get() = if (totalBytes > 0L) {
+            ((downloadedBytes * 100L) / totalBytes).toInt().coerceIn(0, 100)
+        } else {
+            -1
+        }
+}
+
+internal data class UpdateDownloadSource(
+    val name: String,
+    val url: String
+)
+
 sealed class UpdateCheckResult {
     data class Available(val info: AppUpdateInfo) : UpdateCheckResult()
     data object UpToDate : UpdateCheckResult()
@@ -36,7 +56,8 @@ object AppUpdateManager {
     private const val checkIntervalMs = 24 * 60 * 60 * 1000L
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .callTimeout(8, TimeUnit.MINUTES)
         .build()
 
     @Volatile
@@ -82,47 +103,103 @@ object AppUpdateManager {
         }.getOrElse { UpdateCheckResult.Error(it.message ?: "更新检查失败") }
     }
 
-    suspend fun download(context: Context, info: AppUpdateInfo): File = withContext(Dispatchers.IO) {
+    suspend fun download(
+        context: Context,
+        info: AppUpdateInfo,
+        onProgress: (UpdateDownloadProgress) -> Unit = {}
+    ): File = withContext(Dispatchers.IO) {
         ConfigSnapshotManager.create(context, "更新到 ${info.version} 前自动备份")
+        val directory = File(context.externalCacheDir ?: context.cacheDir, "updates").apply { mkdirs() }
+        val target = File(directory, "DailyTask-${info.version}.apk")
+        val temp = File(directory, "DailyTask-${info.version}.download")
+        val sources = buildDownloadSources(info.downloadUrl)
+        var lastFailure: Throwable? = null
+
+        sources.forEachIndexed { index, source ->
+            temp.delete()
+            target.delete()
+            onProgress(UpdateDownloadProgress(0L, -1L, source.name, index + 1, sources.size))
+            try {
+                downloadFromSource(source, temp, index, sources.size, onProgress)
+                check(temp.length() > 0L) { "下载的安装包为空" }
+                check(temp.renameTo(target)) { "安装包保存失败" }
+                check(isValidUpgrade(context, target)) { "安装包校验失败" }
+                pendingApk = target
+                return@withContext target
+            } catch (failure: Throwable) {
+                lastFailure = failure
+                temp.delete()
+                target.delete()
+            }
+        }
+
+        error(
+            "国内加速线路与备用线路均下载失败：${lastFailure?.message ?: "网络连接失败"}"
+        )
+    }
+
+    private fun downloadFromSource(
+        source: UpdateDownloadSource,
+        temp: File,
+        sourceIndex: Int,
+        sourceCount: Int,
+        onProgress: (UpdateDownloadProgress) -> Unit
+    ) {
         val request = Request.Builder()
-            .url(info.downloadUrl)
+            .url(source.url)
             .header("User-Agent", "DailyTask/${BuildConfig.VERSION_NAME}")
             .build()
         client.newCall(request).execute().use { response ->
-            check(response.isSuccessful) { "安装包下载失败（HTTP ${response.code}）" }
-            val directory = File(context.externalCacheDir ?: context.cacheDir, "updates").apply { mkdirs() }
-            val target = File(directory, "DailyTask-${info.version}.apk")
-            val temp = File(directory, "DailyTask-${info.version}.download")
-            response.body.byteStream().use { input ->
-                temp.outputStream().use { output -> input.copyTo(output) }
+            check(response.isSuccessful) { "HTTP ${response.code}" }
+            val body = response.body
+            val total = body.contentLength()
+            var downloaded = 0L
+            var lastUpdateAt = 0L
+            body.byteStream().use { input ->
+                temp.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        output.write(buffer, 0, count)
+                        downloaded += count
+                        val now = System.currentTimeMillis()
+                        if (now - lastUpdateAt >= 100L || (total > 0L && downloaded >= total)) {
+                            lastUpdateAt = now
+                            onProgress(
+                                UpdateDownloadProgress(
+                                    downloaded,
+                                    total,
+                                    source.name,
+                                    sourceIndex + 1,
+                                    sourceCount
+                                )
+                            )
+                        }
+                    }
+                }
             }
-            check(temp.length() > 0L) { "下载的安装包为空" }
-            if (target.exists()) target.delete()
-            check(temp.renameTo(target)) { "安装包保存失败" }
-            val archiveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageArchiveInfo(
-                    target.absolutePath,
-                    PackageManager.PackageInfoFlags.of(0)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageArchiveInfo(target.absolutePath, 0)
-            }
-            val archiveVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                archiveInfo?.longVersionCode ?: 0L
-            } else {
-                @Suppress("DEPRECATION")
-                archiveInfo?.versionCode?.toLong() ?: 0L
-            }
-            val validPackage = archiveInfo?.packageName == context.packageName &&
-                    archiveVersionCode > BuildConfig.VERSION_CODE
-            if (!validPackage) {
-                target.delete()
-                error("安装包校验失败：包名不一致或版本未升级")
-            }
-            pendingApk = target
-            target
         }
+    }
+
+    private fun isValidUpgrade(context: Context, file: File): Boolean {
+        val archiveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageArchiveInfo(
+                file.absolutePath,
+                PackageManager.PackageInfoFlags.of(0)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+        }
+        val archiveVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            archiveInfo?.longVersionCode ?: 0L
+        } else {
+            @Suppress("DEPRECATION")
+            archiveInfo?.versionCode?.toLong() ?: 0L
+        }
+        return archiveInfo?.packageName == context.packageName &&
+            archiveVersionCode > BuildConfig.VERSION_CODE
     }
 
     fun installOrRequestPermission(context: Context, apk: File? = pendingApk): Boolean {
@@ -149,6 +226,15 @@ object AppUpdateManager {
     }
 
     fun hasPendingInstall(): Boolean = pendingApk?.exists() == true
+
+    internal fun buildDownloadSources(officialUrl: String): List<UpdateDownloadSource> {
+        val normalized = officialUrl.trim()
+        return listOf(
+            UpdateDownloadSource("国内加速线路 1", "https://ghfast.top/$normalized"),
+            UpdateDownloadSource("国内加速线路 2", "https://gh-proxy.com/$normalized"),
+            UpdateDownloadSource("GitHub 备用线路", normalized)
+        ).distinctBy { it.url }
+    }
 
     private fun compareVersions(left: String, right: String): Int {
         val a = left.split(Regex("[^0-9]+")).filter { it.isNotBlank() }.map { it.toIntOrNull() ?: 0 }

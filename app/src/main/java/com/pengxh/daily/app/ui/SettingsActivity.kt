@@ -578,18 +578,18 @@ class SettingsActivity : KotlinBaseActivity<ActivitySettingsBinding>() {
     }
 
     private fun showUpdateDialog(info: AppUpdateInfo) {
-        DailyTaskDialogs.showUpdate(this, info) {
+        DailyTaskDialogs.showUpdate(this, info) { updateDialog ->
             lifecycleScope.launch {
-                LoadingDialog.show(this@SettingsActivity, "正在下载更新...")
                 try {
-                    val apk = AppUpdateManager.download(this@SettingsActivity, info)
-                    LoadingDialog.dismiss()
+                    val apk = AppUpdateManager.download(this@SettingsActivity, info) { progress ->
+                        runOnUiThread { updateDialog.updateProgress(progress) }
+                    }
+                    updateDialog.dismiss()
                     if (!AppUpdateManager.installOrRequestPermission(this@SettingsActivity, apk)) {
                         "请允许安装更新，返回后会继续".show(this@SettingsActivity)
                     }
                 } catch (e: Exception) {
-                    LoadingDialog.dismiss()
-                    (e.message ?: "更新下载失败").show(this@SettingsActivity)
+                    updateDialog.showError(e.message ?: "更新下载失败，请稍后重试")
                 }
             }
         }

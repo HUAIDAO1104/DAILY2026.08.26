@@ -27,273 +27,474 @@
             app:title="消息渠道"
             app:titleTextColor="@color/text_primary_dark" />
 
-        <androidx.core.widget.NestedScrollView
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:fillViewport="true"
-            android:overScrollMode="never"
-            android:paddingBottom="28dp">
+            android:layout_weight="1">
 
-            <LinearLayout
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/channelScrollView"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="19dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="接收任务结果"
-                    android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
-
-                <TextView
-                    style="@style/TextAppearance.DailyTask.Body"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="7dp"
-                    android:text="配置后先发送一次测试，成功的渠道会自动成为默认通知方式。" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginBottom="9dp"
-                    android:text="通用"
-                    android:textAppearance="@style/TextAppearance.DailyTask.Label" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="消息标题（可选）"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:helperText="显示在每次任务结果通知的顶部">
-
-                    <com.pengxh.kt.lite.widget.DeletableEditText
-                        android:id="@+id/messageTitleView"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="56dp"
-                        android:singleLine="true"
-                        android:textColor="@color/text_primary_dark"
-                        android:textSize="15sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginBottom="9dp"
-                    android:text="企业微信"
-                    android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fillViewport="true"
+                android:overScrollMode="never"
+                android:paddingBottom="112dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_glass_group"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:paddingHorizontal="19dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="把结果送到你手上"
+                        android:textAppearance="@style/TextAppearance.DailyTask.LargeTitle" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="7dp"
+                        android:text="选择一种通知方式，保存后可发送测试消息确认配置。"
+                        android:textAppearance="@style/TextAppearance.DailyTask.Body" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="9dp"
+                        android:text="通知方式"
+                        android:textAppearance="@style/TextAppearance.DailyTask.Label" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:background="@drawable/bg_glass_group"
+                        android:orientation="horizontal"
+                        android:padding="6dp">
 
                         <LinearLayout
+                            android:id="@+id/wechatSelector"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
+                            android:layout_height="76dp"
                             android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:background="@drawable/bg_channel_selected"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
 
-                            <TextView
-                                android:layout_width="wrap_content"
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_red_soft">
+
+                                <ImageView
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_channel_wechat" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:text="群机器人 Webhook"
-                                android:textColor="@color/text_primary_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
+                                android:layout_marginStart="9dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
 
-                            <TextView
-                                style="@style/TextAppearance.DailyTask.Caption"
+                                <TextView
+                                    android:id="@+id/wechatSelectorTitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="企业微信"
+                                    android:textColor="@color/text_primary_dark"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/wechatSelectorState"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:text="群机器人"
+                                    android:textColor="@color/accent_red"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/emailSelector"
+                            android:layout_width="0dp"
+                            android:layout_height="76dp"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_channel_unselected"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
+
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_glass">
+
+                                <ImageView
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_channel_mail" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="9dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/emailSelectorTitle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="QQ 邮箱"
+                                    android:textColor="@color/text_secondary_dark"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/emailSelectorState"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="3dp"
+                                    android:text="SMTP"
+                                    android:textColor="@color/text_tertiary_dark"
+                                    android:textSize="11sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginTop="24dp"
+                        android:layout_marginBottom="9dp"
+                        android:text="消息标题"
+                        android:textAppearance="@style/TextAppearance.DailyTask.Label" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="每次通知顶部显示的标题"
+                        app:boxBackgroundColor="@color/glass_surface_soft"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/accent_red"
+                        app:hintTextColor="@color/text_tertiary_dark">
+
+                        <com.pengxh.kt.lite.widget.DeletableEditText
+                            android:id="@+id/messageTitleView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="58dp"
+                            android:singleLine="true"
+                            android:textColor="@color/text_primary_dark"
+                            android:textSize="15sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <LinearLayout
+                        android:id="@+id/wechatSection"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:layout_marginBottom="20dp"
+                        android:background="@drawable/bg_glass_group"
+                        android:orientation="vertical"
+                        android:padding="18dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <FrameLayout
+                                android:layout_width="42dp"
+                                android:layout_height="42dp"
+                                android:background="@drawable/bg_circle_red_soft">
+
+                                <ImageView
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_channel_wechat" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="企业微信群机器人"
+                                    android:textColor="@color/text_primary_dark"
+                                    android:textSize="17sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:text="复制 Webhook 地址中 key= 后面的内容"
+                                    android:textAppearance="@style/TextAppearance.DailyTask.Caption" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="18dp"
+                            android:hint="Webhook key"
+                            app:boxBackgroundColor="@color/glass_surface_soft"
+                            app:boxCornerRadiusBottomEnd="15dp"
+                            app:boxCornerRadiusBottomStart="15dp"
+                            app:boxCornerRadiusTopEnd="15dp"
+                            app:boxCornerRadiusTopStart="15dp"
+                            app:boxStrokeColor="@color/accent_red"
+                            app:hintTextColor="@color/text_tertiary_dark">
+
+                            <com.pengxh.kt.lite.widget.DeletableEditText
+                                android:id="@+id/wxKeyView"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="只需填写地址中 key= 后面的内容" />
-                        </LinearLayout>
+                                android:minHeight="58dp"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary_dark"
+                                android:textSize="15sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/sendWxButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="44dp"
-                            android:layout_marginStart="12dp"
-                            android:minWidth="68dp"
-                            android:text="测试"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="14dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="48dp"
+                            android:text="保存并发送测试"
                             android:textColor="@color/white"
                             android:textSize="14sp"
-                            app:backgroundTint="@color/accent_red"
-                            app:cornerRadius="14dp" />
+                            app:backgroundTint="@color/accent_red_deep"
+                            app:cornerRadius="15dp"
+                            app:icon="@drawable/ic_send_plane_modern"
+                            app:iconPadding="7dp"
+                            app:iconSize="18dp"
+                            app:iconTint="@color/white" />
                     </LinearLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:hint="Webhook key"
-                        app:boxCornerRadiusBottomEnd="14dp"
-                        app:boxCornerRadiusBottomStart="14dp"
-                        app:boxCornerRadiusTopEnd="14dp"
-                        app:boxCornerRadiusTopStart="14dp">
-
-                        <com.pengxh.kt.lite.widget.DeletableEditText
-                            android:id="@+id/wxKeyView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:minHeight="56dp"
-                            android:singleLine="true"
-                            android:textColor="@color/text_primary_dark"
-                            android:textSize="15sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginBottom="9dp"
-                    android:text="QQ 邮箱"
-                    android:textAppearance="@style/TextAppearance.DailyTask.Label" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:background="@drawable/bg_glass_group"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
                     <LinearLayout
+                        android:id="@+id/emailSection"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="22dp"
+                        android:layout_marginBottom="20dp"
+                        android:background="@drawable/bg_glass_group"
+                        android:orientation="vertical"
+                        android:padding="18dp"
+                        android:visibility="gone">
 
                         <LinearLayout
-                            android:layout_width="0dp"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
 
-                            <TextView
-                                android:layout_width="wrap_content"
+                            <FrameLayout
+                                android:layout_width="42dp"
+                                android:layout_height="42dp"
+                                android:background="@drawable/bg_circle_red_soft">
+
+                                <ImageView
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="@null"
+                                    android:src="@drawable/ic_channel_mail" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:text="SMTP 邮件通知"
-                                android:textColor="@color/text_primary_dark"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
 
-                            <TextView
-                                style="@style/TextAppearance.DailyTask.Caption"
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="QQ 邮箱 SMTP"
+                                    android:textColor="@color/text_primary_dark"
+                                    android:textSize="17sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:text="授权码需在 QQ 邮箱的帐号设置中生成"
+                                    android:textAppearance="@style/TextAppearance.DailyTask.Caption" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="18dp"
+                            android:hint="发件 QQ 号"
+                            app:boxBackgroundColor="@color/glass_surface_soft"
+                            app:boxCornerRadiusBottomEnd="15dp"
+                            app:boxCornerRadiusBottomStart="15dp"
+                            app:boxCornerRadiusTopEnd="15dp"
+                            app:boxCornerRadiusTopStart="15dp"
+                            app:boxStrokeColor="@color/accent_red"
+                            app:hintTextColor="@color/text_tertiary_dark"
+                            app:suffixText="@qq.com">
+
+                            <com.pengxh.kt.lite.widget.DeletableEditText
+                                android:id="@+id/emailSendAddressView"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="授权码需要在 QQ 邮箱设置中单独生成" />
-                        </LinearLayout>
+                                android:inputType="number"
+                                android:maxLength="15"
+                                android:minHeight="58dp"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary_dark"
+                                android:textSize="15sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="SMTP 授权码"
+                            app:boxBackgroundColor="@color/glass_surface_soft"
+                            app:boxCornerRadiusBottomEnd="15dp"
+                            app:boxCornerRadiusBottomStart="15dp"
+                            app:boxCornerRadiusTopEnd="15dp"
+                            app:boxCornerRadiusTopStart="15dp"
+                            app:boxStrokeColor="@color/accent_red"
+                            app:endIconMode="password_toggle"
+                            app:hintTextColor="@color/text_tertiary_dark">
+
+                            <com.pengxh.kt.lite.widget.DeletableEditText
+                                android:id="@+id/emailSendCodeView"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textPassword"
+                                android:minHeight="58dp"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary_dark"
+                                android:textSize="15sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/emailLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="收件邮箱"
+                            app:boxBackgroundColor="@color/glass_surface_soft"
+                            app:boxCornerRadiusBottomEnd="15dp"
+                            app:boxCornerRadiusBottomStart="15dp"
+                            app:boxCornerRadiusTopEnd="15dp"
+                            app:boxCornerRadiusTopStart="15dp"
+                            app:boxStrokeColor="@color/accent_red"
+                            app:hintTextColor="@color/text_tertiary_dark">
+
+                            <com.pengxh.kt.lite.widget.DeletableEditText
+                                android:id="@+id/emailInboxView"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textEmailAddress"
+                                android:minHeight="58dp"
+                                android:singleLine="true"
+                                android:textColor="@color/text_primary_dark"
+                                android:textSize="15sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/sendEmailButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="44dp"
-                            android:layout_marginStart="12dp"
-                            android:minWidth="68dp"
-                            android:text="测试"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="14dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minHeight="48dp"
+                            android:text="保存并发送测试"
                             android:textColor="@color/white"
                             android:textSize="14sp"
-                            app:backgroundTint="@color/accent_red"
-                            app:cornerRadius="14dp" />
+                            app:backgroundTint="@color/accent_red_deep"
+                            app:cornerRadius="15dp"
+                            app:icon="@drawable/ic_send_plane_modern"
+                            app:iconPadding="7dp"
+                            app:iconSize="18dp"
+                            app:iconTint="@color/white" />
                     </LinearLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:hint="发件 QQ 号"
-                        app:boxCornerRadiusBottomEnd="14dp"
-                        app:boxCornerRadiusBottomStart="14dp"
-                        app:boxCornerRadiusTopEnd="14dp"
-                        app:boxCornerRadiusTopStart="14dp"
-                        app:suffixText="@qq.com">
-
-                        <com.pengxh.kt.lite.widget.DeletableEditText
-                            android:id="@+id/emailSendAddressView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:maxLength="15"
-                            android:minHeight="56dp"
-                            android:singleLine="true"
-                            android:textColor="@color/text_primary_dark"
-                            android:textSize="15sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="SMTP 授权码"
-                        app:boxCornerRadiusBottomEnd="14dp"
-                        app:boxCornerRadiusBottomStart="14dp"
-                        app:boxCornerRadiusTopEnd="14dp"
-                        app:boxCornerRadiusTopStart="14dp"
-                        app:endIconMode="password_toggle">
-
-                        <com.pengxh.kt.lite.widget.DeletableEditText
-                            android:id="@+id/emailSendCodeView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textPassword"
-                            android:minHeight="56dp"
-                            android:singleLine="true"
-                            android:textColor="@color/text_primary_dark"
-                            android:textSize="15sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/emailLayout"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="收件邮箱"
-                        app:boxCornerRadiusBottomEnd="14dp"
-                        app:boxCornerRadiusBottomStart="14dp"
-                        app:boxCornerRadiusTopEnd="14dp"
-                        app:boxCornerRadiusTopStart="14dp">
-
-                        <com.pengxh.kt.lite.widget.DeletableEditText
-                            android:id="@+id/emailInboxView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textEmailAddress"
-                            android:minHeight="56dp"
-                            android:singleLine="true"
-                            android:textColor="@color/text_primary_dark"
-                            android:textSize="15sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+
+            <LinearLayout
+                android:id="@+id/channelBottomBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="@drawable/bg_bottom_action_bar"
+                android:orientation="vertical"
+                android:paddingStart="19dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="19dp"
+                android:paddingBottom="16dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveChannelButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="52dp"
+                    android:text="保存通知设置"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/accent_red_deep"
+                    app:cornerRadius="17dp"
+                    app:icon="@drawable/ic_check_modern"
+                    app:iconPadding="8dp"
+                    app:iconSize="18dp"
+                    app:iconTint="@color/white" />
             </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
+        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

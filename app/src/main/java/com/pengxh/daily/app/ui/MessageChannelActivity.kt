@@ -1,16 +1,20 @@
 package com.pengxh.daily.app.ui
 
 import android.os.Bundle
+import android.view.View
+import android.view.WindowManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.gson.JsonObject
+import com.pengxh.daily.app.R
 import com.pengxh.daily.app.databinding.ActivityMessageChannelBinding
 import com.pengxh.daily.app.utils.ConfigStore
 import com.pengxh.daily.app.utils.Constant
 import com.pengxh.daily.app.utils.DailyTaskDialogs
 import com.pengxh.daily.app.utils.MessageDispatcher
 import com.pengxh.kt.lite.base.KotlinBaseActivity
+import com.pengxh.kt.lite.extensions.dp2px
 import com.pengxh.kt.lite.extensions.isEmail
 import com.pengxh.kt.lite.extensions.show
 import com.pengxh.kt.lite.utils.LoadingDialog
@@ -19,16 +23,28 @@ import com.pengxh.kt.lite.utils.SaveKeyValues
 class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>() {
 
     private val context = this
+    private var selectedChannel = 1
 
     override fun initViewBinding(): ActivityMessageChannelBinding {
         return ActivityMessageChannelBinding.inflate(layoutInflater)
     }
 
     override fun setupTopBarLayout() {
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { view, insets ->
             val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
             view.setPadding(0, statusBarHeight, 0, 0)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(binding.channelBottomBar) { view, insets ->
+            val navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            view.setPadding(
+                19.dp2px(this),
+                14.dp2px(this),
+                19.dp2px(this),
+                16.dp2px(this) + navigationBarHeight
+            )
             insets
         }
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -52,6 +68,11 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
             binding.emailSendCodeView.setText(authCode)
             binding.emailInboxView.setText(inbox)
         }
+
+        selectedChannel = SaveKeyValues.loadInt(Constant.MSG_CHANNEL_KEY, 1)
+            .takeIf { it == 0 || it == 1 } ?: 1
+        selectChannel(selectedChannel)
+        updateConfigurationStates()
     }
 
     override fun observeRequestState() {
@@ -59,16 +80,12 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
     }
 
     override fun initEvent() {
-        binding.sendWxButton.setOnClickListener {
-            val key = binding.wxKeyView.text.toString()
-            if (key.isBlank()) {
-                "企业微信消息 Webhook key 为空".show(this)
-                return@setOnClickListener
-            }
+        binding.wechatSelector.setOnClickListener { selectChannel(1) }
+        binding.emailSelector.setOnClickListener { selectChannel(0) }
+        binding.saveChannelButton.setOnClickListener { saveCurrentChannel(showSuccess = true) }
 
-            SaveKeyValues.saveString(
-                Constant.WX_WEB_HOOK_KEY, binding.wxKeyView.text.toString()
-            )
+        binding.sendWxButton.setOnClickListener {
+            if (!saveCurrentChannel(showSuccess = false)) return@setOnClickListener
 
             DailyTaskDialogs.showConfirm(
                 this,
@@ -80,49 +97,111 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
         }
 
         binding.sendEmailButton.setOnClickListener {
-            val address = binding.emailSendAddressView.text.toString()
-            if (address.isBlank()) {
-                binding.emailSendAddressView.shakeIfEmpty()
-                "发件箱地址为空".show(context)
-                return@setOnClickListener
-            }
-            val outbox = if (address.contains("@qq.com")) {
-                address
-            } else {
-                "${address}@qq.com"
-            }
-            if (!outbox.isEmail()) {
-                "发件箱格式错误，请检查".show(context)
-                return@setOnClickListener
-            }
-
-            val authCode = binding.emailSendCodeView.text.toString()
-            if (authCode.isBlank()) {
-                binding.emailSendCodeView.shakeIfEmpty()
-                "发件箱授权码为空".show(context)
-                return@setOnClickListener
-            }
-
-            val inbox = binding.emailInboxView.text.toString()
-            if (inbox.isBlank()) {
-                binding.emailInboxView.shakeIfEmpty()
-                "收件箱地址为空".show(context)
-                return@setOnClickListener
-            }
-            if (!inbox.isEmail()) {
-                "发件箱格式错误，请检查".show(context)
-                return@setOnClickListener
-            }
-
-            val cacheObj = JsonObject().apply {
-                addProperty("outbox", outbox)
-                addProperty("authCode", binding.emailSendCodeView.text.toString())
-                addProperty("inbox", binding.emailInboxView.text.toString())
-            }
-            ConfigStore.get().save(Constant.EMAIL_CONFIG_KEY, cacheObj)
-
+            if (!saveCurrentChannel(showSuccess = false)) return@setOnClickListener
             sendTestEmail()
         }
+    }
+
+    private fun selectChannel(channel: Int) {
+        selectedChannel = channel
+        val isWechat = channel == 1
+        binding.wechatSection.visibility = if (isWechat) View.VISIBLE else View.GONE
+        binding.emailSection.visibility = if (isWechat) View.GONE else View.VISIBLE
+        binding.wechatSelector.setBackgroundResource(
+            if (isWechat) R.drawable.bg_channel_selected else R.drawable.bg_channel_unselected
+        )
+        binding.emailSelector.setBackgroundResource(
+            if (isWechat) R.drawable.bg_channel_unselected else R.drawable.bg_channel_selected
+        )
+        binding.wechatSelectorTitle.setTextColor(
+            getColor(if (isWechat) R.color.text_primary_dark else R.color.text_secondary_dark)
+        )
+        binding.emailSelectorTitle.setTextColor(
+            getColor(if (isWechat) R.color.text_secondary_dark else R.color.text_primary_dark)
+        )
+        updateConfigurationStates()
+    }
+
+    private fun updateConfigurationStates() {
+        val wxConfigured = binding.wxKeyView.text?.toString()?.isNotBlank() == true
+        val emailConfigured = !ConfigStore.get().load(Constant.EMAIL_CONFIG_KEY).isEmpty
+        binding.wechatSelectorState.text = if (wxConfigured) "已配置" else "群机器人"
+        binding.emailSelectorState.text = if (emailConfigured) "已配置" else "SMTP"
+        binding.wechatSelectorState.setTextColor(
+            getColor(if (selectedChannel == 1) R.color.accent_red else R.color.text_tertiary_dark)
+        )
+        binding.emailSelectorState.setTextColor(
+            getColor(if (selectedChannel == 0) R.color.accent_red else R.color.text_tertiary_dark)
+        )
+    }
+
+    private fun saveCurrentChannel(showSuccess: Boolean): Boolean {
+        val title = binding.messageTitleView.text?.toString()?.trim().orEmpty()
+            .ifBlank { "打卡结果通知" }
+        SaveKeyValues.saveString(Constant.MESSAGE_TITLE_KEY, title)
+
+        val saved = if (selectedChannel == 1) {
+            val key = binding.wxKeyView.text?.toString()?.trim().orEmpty()
+            if (key.isBlank()) {
+                binding.wxKeyView.shakeIfEmpty()
+                "请填写企业微信 Webhook key".show(this)
+                false
+            } else {
+                SaveKeyValues.saveString(Constant.WX_WEB_HOOK_KEY, key)
+                true
+            }
+        } else {
+            saveEmailConfiguration()
+        }
+        if (!saved) return false
+
+        SaveKeyValues.saveInt(Constant.MSG_CHANNEL_KEY, selectedChannel)
+        updateConfigurationStates()
+        if (showSuccess) "通知设置已保存".show(this)
+        return true
+    }
+
+    private fun saveEmailConfiguration(): Boolean {
+        val address = binding.emailSendAddressView.text?.toString()?.trim().orEmpty()
+        if (address.isBlank()) {
+            binding.emailSendAddressView.shakeIfEmpty()
+            "请填写发件 QQ 号".show(context)
+            return false
+        }
+        val outbox = if (address.endsWith("@qq.com", ignoreCase = true)) address else "$address@qq.com"
+        if (!outbox.isEmail()) {
+            "发件邮箱格式不正确".show(context)
+            return false
+        }
+
+        val authCode = binding.emailSendCodeView.text?.toString()?.trim().orEmpty()
+        if (authCode.isBlank()) {
+            binding.emailSendCodeView.shakeIfEmpty()
+            "请填写 SMTP 授权码".show(context)
+            return false
+        }
+
+        val inbox = binding.emailInboxView.text?.toString()?.trim().orEmpty()
+        if (inbox.isBlank()) {
+            binding.emailInboxView.shakeIfEmpty()
+            "请填写收件邮箱".show(context)
+            return false
+        }
+        if (!inbox.isEmail()) {
+            binding.emailLayout.error = "收件邮箱格式不正确"
+            return false
+        }
+        binding.emailLayout.error = null
+
+        ConfigStore.get().save(
+            Constant.EMAIL_CONFIG_KEY,
+            JsonObject().apply {
+                addProperty("outbox", outbox)
+                addProperty("authCode", authCode)
+                addProperty("inbox", inbox)
+            }
+        )
+        return true
     }
 
     private fun sendTestMessage() {
@@ -143,6 +222,8 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
                 )
 
                 SaveKeyValues.saveInt(Constant.MSG_CHANNEL_KEY, 1)
+                "发送成功，请在企业微信群中确认".show(this)
+                updateConfigurationStates()
             },
             onFailure = {
                 if (isFinishing || isDestroyed) return@sendMessage
@@ -173,6 +254,7 @@ class MessageChannelActivity : KotlinBaseActivity<ActivityMessageChannelBinding>
                     )
 
                     SaveKeyValues.saveInt(Constant.MSG_CHANNEL_KEY, 0)
+                    updateConfigurationStates()
                 },
                 onFailure = {
                     LoadingDialog.dismiss()

@@ -46,6 +46,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     private val configStore by lazy { AiConfigStore(this) }
     private val planner by lazy { AiPlanner(configStore) }
     private val operations by lazy { DailyTaskOperations(this) }
+    private var isBusy = false
 
     override fun initViewBinding() = ActivityAiAssistantBinding.inflate(layoutInflater)
 
@@ -65,6 +66,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
                 bottomMargin = baseBottom + maxOf(navigation, keyboard)
             }
             binding.assistantPresenceCard.visibility = if (keyboard > 0) View.GONE else View.VISIBLE
+            binding.suggestionScroll.visibility = if (keyboard > 0) View.GONE else View.VISIBLE
             if (keyboard > 0) scrollToBottom()
         }
         ViewCompat.setOnApplyWindowInsetsListener(binding.assistantContent) { _, insets ->
@@ -97,6 +99,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
 
     override fun initEvent() {
         binding.sendButton.setOnClickListener { submitPrompt() }
+        binding.promptInput.doAfterTextChanged { refreshSendAction() }
         binding.promptInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 submitPrompt()
@@ -111,7 +114,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             if (focused) {
                 setAssistantState(AiCompanionView.State.AWARE)
                 scrollToBottom()
-            } else if (binding.sendButton.isEnabled) {
+            } else if (!isBusy) {
                 setAssistantState(AiCompanionView.State.IDLE)
             }
         }
@@ -119,6 +122,12 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
             binding.promptInput.requestFocus()
             setAssistantState(AiCompanionView.State.AWARE)
         }
+        binding.assistantOrb.isClickable = true
+        binding.assistantOrb.setOnClickListener {
+            binding.promptInput.requestFocus()
+            setAssistantState(AiCompanionView.State.AWARE)
+        }
+        refreshSendAction()
     }
 
     private fun sendSuggestion(text: String) {
@@ -128,7 +137,23 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
 
     private fun submitPrompt() {
         val command = binding.promptInput.text?.toString()?.trim().orEmpty()
-        if (command.isBlank() || !binding.sendButton.isEnabled) return
+        if (command.isBlank() || isBusy) return
+        binding.sendButton.animate()
+            .translationX(3.dp2px(this).toFloat())
+            .translationY((-3).dp2px(this).toFloat())
+            .scaleX(0.88f)
+            .scaleY(0.88f)
+            .setDuration(90L)
+            .withEndAction {
+                binding.sendButton.animate()
+                    .translationX(0f)
+                    .translationY(0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(130L)
+                    .start()
+            }
+            .start()
         binding.promptInput.text?.clear()
         addMessage(command, fromUser = true)
         setLoading(true)
@@ -137,6 +162,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
                 val state = withContext(Dispatchers.IO) { operations.buildStateJson() }
                 val plan = planner.createPlan(command, state)
                 if (plan.actions.isEmpty()) {
+                    setAssistantState(AiCompanionView.State.SPEAKING)
                     addMessage(plan.reply.ifBlank { "这句话没有包含明确的修改操作。你可以说得更具体一些。" }, false)
                     celebrateAssistant()
                 } else {
@@ -459,10 +485,16 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     }
 
     private fun setLoading(loading: Boolean) {
-        binding.sendButton.isEnabled = !loading
-        binding.sendButton.alpha = if (loading) 0.45f else 1f
-        binding.promptInput.isEnabled = !loading
+        isBusy = loading
+        refreshSendAction()
         if (loading) setAssistantState(AiCompanionView.State.THINKING)
+    }
+
+    private fun refreshSendAction() {
+        val enabled = !isBusy && !binding.promptInput.text.isNullOrBlank()
+        binding.sendButton.isEnabled = enabled
+        binding.sendButton.isClickable = enabled
+        binding.sendButton.alpha = if (enabled) 1f else 0.38f
     }
 
     private fun scrollToBottom() {
@@ -477,19 +509,23 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
         val copy = when (state) {
             AiCompanionView.State.IDLE -> "在这儿，随时可以开始" to "告诉我你想修改的任务、请假或设置"
             AiCompanionView.State.AWARE -> "我在听" to "把想做的事直接说出来就好"
-            AiCompanionView.State.THINKING -> "正在整理操作" to "我会先给你核对，再执行修改"
-            AiCompanionView.State.HAPPY -> "已经处理好啦" to "修改结果已保存到本机"
-            AiCompanionView.State.ERROR -> "刚才没有接住" to "检查模型设置或换一种说法再试试"
             AiCompanionView.State.SLEEPING -> "暂时休息中" to "点一下小球即可唤醒"
+            AiCompanionView.State.LISTENING -> "正在听你说" to "说完后我会先整理操作步骤"
+            AiCompanionView.State.TRANSCRIBING -> "正在识别" to "马上把内容整理成可执行操作"
+            AiCompanionView.State.THINKING -> "正在整理操作" to "我会先给你核对，再执行修改"
+            AiCompanionView.State.SPEAKING -> "正在回答" to "结果和需要确认的步骤都在下面"
+            AiCompanionView.State.SUCCESS -> "已经处理好啦" to "修改结果已保存到本机"
+            AiCompanionView.State.INTERRUPTED -> "操作已暂停" to "没有写入任何未经确认的修改"
+            AiCompanionView.State.ERROR -> "刚才没有接住" to "检查模型设置或换一种说法再试试"
         }
         binding.assistantStateView.text = copy.first
         binding.assistantStateDetailView.text = copy.second
     }
 
     private fun celebrateAssistant() {
-        setAssistantState(AiCompanionView.State.HAPPY)
+        setAssistantState(AiCompanionView.State.SUCCESS)
         binding.assistantOrb.postDelayed({
-            if (binding.sendButton.isEnabled && binding.assistantOrb.state == AiCompanionView.State.HAPPY) {
+            if (!isBusy && binding.assistantOrb.state == AiCompanionView.State.SUCCESS) {
                 setAssistantState(AiCompanionView.State.IDLE)
             }
         }, 2600L)
@@ -498,7 +534,7 @@ class AiAssistantActivity : KotlinBaseActivity<ActivityAiAssistantBinding>() {
     private fun showAssistantError() {
         setAssistantState(AiCompanionView.State.ERROR)
         binding.assistantOrb.postDelayed({
-            if (binding.sendButton.isEnabled && binding.assistantOrb.state == AiCompanionView.State.ERROR) {
+            if (!isBusy && binding.assistantOrb.state == AiCompanionView.State.ERROR) {
                 setAssistantState(AiCompanionView.State.IDLE)
             }
         }, 3200L)
