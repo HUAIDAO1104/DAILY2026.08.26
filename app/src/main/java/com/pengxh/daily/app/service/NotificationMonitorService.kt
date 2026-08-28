@@ -7,6 +7,9 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.pengxh.daily.app.extensions.openApplication
+import com.pengxh.daily.app.remote.RemoteAiCommandHandler
+import com.pengxh.daily.app.remote.RemoteCommandDeduplicator
+import com.pengxh.daily.app.remote.RemoteCommandProtocol
 import com.pengxh.daily.app.sqlite.DatabaseWrapper
 import com.pengxh.daily.app.sqlite.bean.NotificationBean
 import com.pengxh.daily.app.utils.Constant
@@ -58,6 +61,12 @@ class NotificationMonitorService : NotificationListenerService() {
     private val kTag = "MonitorService"
     private val auxiliaryApp = arrayOf(Constant.WECHAT, Constant.QQ, Constant.TIM, Constant.ZFB)
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val remoteCommandDeduplicator = RemoteCommandDeduplicator()
+    private val remoteAiCommandHandler by lazy {
+        RemoteAiCommandHandler(applicationContext) { title, content ->
+            MessageDispatcher.sendMessage(title, content)
+        }
+    }
     private var listenerConnected = false
 
     /**
@@ -102,7 +111,7 @@ class NotificationMonitorService : NotificationListenerService() {
         }
 
         // 其他消息指令
-        handleRemoteCommand(pkg, notice)
+        handleRemoteCommand(pkg, notice, sbn.key, sbn.postTime)
     }
 
     private fun saveTargetNotice(pkg: String, targetApp: String, title: String, notice: String) {
@@ -127,40 +136,47 @@ class NotificationMonitorService : NotificationListenerService() {
     /**
      * 处理远程指令
      */
-    private fun handleRemoteCommand(pkg: String, notice: String) {
+    private fun handleRemoteCommand(
+        pkg: String,
+        notice: String,
+        notificationKey: String,
+        postTime: Long
+    ) {
         if (pkg !in auxiliaryApp) return
 
         Log.d(kTag, "handleRemoteCommand: notice = $notice")
-        val prefixIndex = notice.indexOf(Constant.COMMAND_PREFIX)
-        if (prefixIndex < 0) {
+        val command = RemoteCommandProtocol.extractBody(notice)
+        if (command == null) {
             Log.d(kTag, "handleRemoteCommand: 未检测到 DT# 指令前缀")
             return
         }
-
-        // 折叠通知格式形如 "[n条]昵称: DT#执行任务"，截取 DT# 之后的真正指令
-        val command = notice.substring(prefixIndex)
+        val stableNotificationKey = notificationKey.ifBlank { "$pkg:$postTime" }
+        if (!remoteCommandDeduplicator.shouldProcess(stableNotificationKey, command)) {
+            Log.d(kTag, "handleRemoteCommand: 忽略重复通知")
+            return
+        }
         Log.d(kTag, "handleRemoteCommand: command = $command")
 
-        when {
-            command.contains("执行任务") -> emitMonitorEvent(MonitorEvent.StartTaskCommand)
+        when (command) {
+            "执行任务" -> emitMonitorEvent(MonitorEvent.StartTaskCommand)
 
-            command.contains("终止任务") -> emitMonitorEvent(MonitorEvent.StopTaskCommand)
+            "终止任务" -> emitMonitorEvent(MonitorEvent.StopTaskCommand)
 
-            command.contains("开启循环") -> {
+            "开启循环" -> {
                 SaveKeyValues.saveBoolean(Constant.TASK_AUTO_RECYCLE_KEY, true)
                 MessageDispatcher.sendMessage("循环任务状态通知", "循环任务状态已更新为：开启")
             }
 
-            command.contains("关闭循环") -> {
+            "关闭循环" -> {
                 SaveKeyValues.saveBoolean(Constant.TASK_AUTO_RECYCLE_KEY, false)
                 MessageDispatcher.sendMessage("循环任务状态通知", "循环任务状态已更新为：关闭")
             }
 
-            command.contains("息屏") -> emitMonitorEvent(MonitorEvent.ShowMaskCommand)
+            "息屏" -> emitMonitorEvent(MonitorEvent.ShowMaskCommand)
 
-            command.contains("亮屏") -> emitMonitorEvent(MonitorEvent.HideMaskCommand)
+            "亮屏" -> emitMonitorEvent(MonitorEvent.HideMaskCommand)
 
-            command.contains("考勤记录") -> {
+            "考勤记录" -> {
                 serviceScope.launch {
                     val notices = try {
                         DatabaseWrapper.loadCurrentDayNotice()
@@ -185,7 +201,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 }
             }
 
-            command.contains("状态查询") -> {
+            "状态查询" -> {
                 val type = SaveKeyValues.loadInt(Constant.MSG_CHANNEL_KEY, Constant.DEFAULT_INDEX)
                 val content = buildString {
                     appendLine("任务状态：${if (TaskScheduler.isRunning()) "运行中" else "已停止"}")
@@ -197,7 +213,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 MessageDispatcher.sendMessage("状态查询通知", content)
             }
 
-            command.contains("截屏") -> {
+            "截屏" -> {
                 if (ProjectionSession.isStateActive()) {
                     openApplication { emitMonitorEvent(MonitorEvent.AppOpenedForScreenshot) }
                 } else {
@@ -208,7 +224,7 @@ class NotificationMonitorService : NotificationListenerService() {
             else -> {
                 // 自定义打卡指令，用户可配置关键词（如 "打卡"），同样需要 DT# 前缀
                 val key = SaveKeyValues.loadString(Constant.REMOTE_COMMAND_KEY, "打卡")
-                if (notice.contains(key)) {
+                if (command == key) {
                     val timeoutSeconds = SaveKeyValues.loadInt(
                         Constant.STAY_OVERTIME_KEY, Constant.DEFAULT_OVER_TIME
                     )
@@ -222,6 +238,8 @@ class NotificationMonitorService : NotificationListenerService() {
                             )
                         )
                     }
+                } else {
+                    serviceScope.launch { remoteAiCommandHandler.handle(command) }
                 }
             }
         }

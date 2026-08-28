@@ -1,6 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:background="@drawable/bg_glass_card_small" android:minHeight="82dp" android:padding="15dp">
-    <com.google.android.material.textview.MaterialTextView android:id="@+id/commandView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/text_primary_dark" android:textSize="14sp" android:textStyle="bold" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
-    <com.google.android.material.card.MaterialCardView android:id="@+id/cardView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" app:cardCornerRadius="8dp" app:layout_constraintBottom_toBottomOf="@id/commandView" app:layout_constraintStart_toEndOf="@id/commandView" app:layout_constraintTop_toTopOf="@id/commandView" app:strokeWidth="0dp"><com.google.android.material.textview.MaterialTextView android:id="@+id/flagView" android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:textColor="@color/white" android:textSize="12sp" android:textStyle="bold" /></com.google.android.material.card.MaterialCardView>
-    <com.google.android.material.textview.MaterialTextView android:id="@+id/descView" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/text_secondary_dark" android:textSize="12sp" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toBottomOf="@id/commandView" />
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    android:background="@drawable/bg_glass_card_small"
+    android:minHeight="82dp"
+    android:padding="15dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/commandView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:breakStrategy="balanced"
+        android:textColor="@color/text_primary_dark"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/cardView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:strokeWidth="0dp">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/flagView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/titleBottomBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="commandView,cardView" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/descView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/text_secondary_dark"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/titleBottomBarrier" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

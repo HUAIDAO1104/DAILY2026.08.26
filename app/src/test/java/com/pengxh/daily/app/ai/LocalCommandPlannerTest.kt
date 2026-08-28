@@ -67,4 +67,78 @@ class LocalCommandPlannerTest {
         assertEquals("result_source", actions[1].setting)
         assertEquals("截图", actions[1].value)
     }
+
+    @Test
+    fun cancelsLeaveWithNaturalWordOrder() {
+        val action = LocalCommandPlanner.plan("取消明天的请假", today)!!.actions.single()
+
+        assertEquals(AiActionTypes.CANCEL_LEAVE, action.type)
+        assertEquals("2026-08-27", action.startDate)
+    }
+
+    @Test
+    fun recognizesShortChineseLeaveCancellation() {
+        val action = LocalCommandPlanner.plan("明天销假", today)!!.actions.single()
+
+        assertEquals(AiActionTypes.CANCEL_LEAVE, action.type)
+        assertEquals("2026-08-27", action.startDate)
+    }
+
+    @Test
+    fun plansRelativeLeaveDateRangeInMentionOrder() {
+        val action = LocalCommandPlanner.plan("明天到后天请假", today)!!.actions.single()
+
+        assertEquals("2026-08-27", action.startDate)
+        assertEquals("2026-08-28", action.endDate)
+    }
+
+    @Test
+    fun plansInheritedNextWeekDateRange() {
+        val action = LocalCommandPlanner.plan("下周一到周三请假", today)!!.actions.single()
+
+        assertEquals("2026-08-31", action.startDate)
+        assertEquals("2026-09-02", action.endDate)
+    }
+
+    @Test
+    fun acceptsChineseDateSuffix() {
+        val action = LocalCommandPlanner.plan("8月29号请假", today)!!.actions.single()
+
+        assertEquals("2026-08-29", action.startDate)
+    }
+
+    @Test
+    fun delegatesPeriodSpecificLeaveCancellationToOnlineAi() {
+        assertNull(LocalCommandPlanner.plan("取消明天上午的请假", today))
+    }
+
+    @Test
+    fun delegatesAmbiguousMultiTaskTimeChangeToOnlineAi() {
+        assertNull(LocalCommandPlanner.plan("把8点和9点任务都改到10点", today))
+    }
+
+    @Test
+    fun addsEveryTimeMentionedInOneCommand() {
+        val actions = LocalCommandPlanner.plan("添加上午9点和下午6点两个任务", today)!!.actions
+
+        assertEquals(2, actions.size)
+        assertEquals(listOf("09:00:00", "18:00:00"), actions.map { it.time })
+    }
+
+    @Test
+    fun ordersStopBeforeTaskChangeAndRestartAfterwards() {
+        val actions = LocalCommandPlanner.plan(
+            "先暂停任务，把8点任务改到8点半，然后启动任务",
+            today
+        )!!.actions
+
+        assertEquals(
+            listOf(
+                AiActionTypes.STOP_SCHEDULER,
+                AiActionTypes.UPDATE_TASK,
+                AiActionTypes.START_SCHEDULER
+            ),
+            actions.map { it.type }
+        )
+    }
 }

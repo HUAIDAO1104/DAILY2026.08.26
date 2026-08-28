@@ -19,6 +19,11 @@ class CommandActivity : KotlinBaseActivity<ActivityCommandBinding>() {
 
     private val context = this
     private val list = mutableListOf(
+        Triple("DT#帮助", "返回自然语言控制说明和常用示例", true),
+        Triple("DT#把8点任务改到8点半", "修改任务时间；常用说法可直接在本机识别", true),
+        Triple("DT#明天下午请假", "添加一次性请假，到期后自动恢复任务", true),
+        Triple("DT#取消明天的请假", "销假属于删除操作，会先返回四位确认码", true),
+        Triple("DT#周末和法定节假日不打卡", "同时更新固定休息日和法定节假日规则", true),
         Triple("DT#执行任务", "启动循环任务（默认每天自动执行）", false),
         Triple("DT#终止任务", "停止循环任务（仅停止当天）", true),
         Triple("DT#开启循环", "开启周期循环的标志", true),

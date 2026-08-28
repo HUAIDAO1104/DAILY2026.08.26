@@ -25,12 +25,12 @@ object LocalCommandPlanner {
                     (text.contains("任务") && text.contains("启用"))) && times.isNotEmpty() -> {
                 times.forEach { actions += AiAction(type = AiActionTypes.UPDATE_TASK, time = it, enabled = true) }
             }
-            (text.contains("任务") && containsAny(text, "改名为", "重命名为")) && times.isNotEmpty() -> {
+            (text.contains("任务") && containsAny(text, "改名为", "重命名为")) && times.size == 1 -> {
                 val name = Regex("(?:改名为|重命名为)\\s*([^,，。]+)").find(text)?.groupValues?.get(1)?.trim()
                 if (!name.isNullOrBlank()) actions += AiAction(type = AiActionTypes.UPDATE_TASK, time = times.first(), taskName = name)
             }
             (containsAny(text, "修改任务", "改任务", "改到", "改成", "调整到") ||
-                    (text.contains("任务") && text.contains("改"))) && times.size >= 2 -> {
+                    (text.contains("任务") && text.contains("改"))) && times.size == 2 -> {
                 actions += AiAction(
                     type = AiActionTypes.UPDATE_TASK,
                     time = times[0],
@@ -51,8 +51,11 @@ object LocalCommandPlanner {
             }
         }
 
-        // 一次性请假
-        if (text.contains("请假") && !containsAny(text, "取消请假", "删除请假")) {
+        // 一次性请假 / 销假。允许“取消明天的请假”等自然语序。
+        val cancelLeave = text.contains("销假") ||
+                Regex("(?:取消|删除|撤销).{0,12}请假").containsMatchIn(text) ||
+                Regex("请假.{0,12}(?:取消|删除|撤销)").containsMatchIn(text)
+        if (text.contains("请假") && !cancelLeave) {
             val dates = extractDateRange(text, today)
             val period = when {
                 text.contains("上午") || text.contains("早上") -> "MORNING"
@@ -66,7 +69,7 @@ object LocalCommandPlanner {
                 period = period,
                 reason = extractReason(text)
             )
-        } else if (containsAny(text, "取消请假", "删除请假")) {
+        } else if (cancelLeave && !containsAny(text, "上午", "早上", "下午", "晚上")) {
             val date = extractDateRange(text, today).first
             actions += AiAction(type = AiActionTypes.CANCEL_LEAVE, startDate = date.toString())
         }
@@ -136,9 +139,11 @@ object LocalCommandPlanner {
         Regex("消息标题(?:改成|设置为|设为)\\s*([^,，。]+)").find(text)?.let {
             actions += setting("message_title", it.groupValues[1].trim())
         }
-        when {
-            containsAny(text, "启动任务", "开始任务", "开始打卡") -> actions += AiAction(type = AiActionTypes.START_SCHEDULER)
-            containsAny(text, "停止任务", "暂停任务", "停止打卡") -> actions += AiAction(type = AiActionTypes.STOP_SCHEDULER)
+        if (containsAny(text, "停止任务", "暂停任务", "停止打卡")) {
+            actions += AiAction(type = AiActionTypes.STOP_SCHEDULER)
+        }
+        if (containsAny(text, "启动任务", "开始任务", "开始打卡")) {
+            actions += AiAction(type = AiActionTypes.START_SCHEDULER)
         }
         when {
             containsAny(text, "恢复配置", "恢复备份") -> actions += AiAction(type = AiActionTypes.RESTORE_LATEST_SNAPSHOT)
@@ -146,10 +151,16 @@ object LocalCommandPlanner {
         }
 
         val distinct = actions.distinct()
-        if (distinct.isEmpty()) return null
+        // 复合指令必须先停调度器、再修改任务，最后按需重新启动。
+        val ordered = distinct.filter { it.type == AiActionTypes.STOP_SCHEDULER } +
+                distinct.filter {
+                    it.type != AiActionTypes.STOP_SCHEDULER &&
+                            it.type != AiActionTypes.START_SCHEDULER
+                } + distinct.filter { it.type == AiActionTypes.START_SCHEDULER }
+        if (ordered.isEmpty()) return null
         return AiActionPlan(
-            summary = "已理解你的要求，准备执行 ${distinct.size} 项更改",
-            actions = distinct
+            summary = "已理解你的要求，准备执行 ${ordered.size} 项更改",
+            actions = ordered
         )
     }
 
@@ -181,32 +192,45 @@ object LocalCommandPlanner {
     }
 
     private fun extractDateRange(text: String, today: LocalDate): Pair<LocalDate, LocalDate> {
-        val explicit = Regex("(?:(\\d{4})[-/.年])?(\\d{1,2})[-/.月](\\d{1,2})日?").findAll(text)
-            .mapNotNull {
+        val mentions = mutableListOf<Pair<Int, LocalDate>>()
+        Regex("(?:(\\d{4})[-/.年])?(\\d{1,2})[-/.月](\\d{1,2})(?:日|号)?").findAll(text)
+            .forEach {
                 val year = it.groupValues[1].toIntOrNull() ?: today.year
-                runCatching { LocalDate.of(year, it.groupValues[2].toInt(), it.groupValues[3].toInt()) }.getOrNull()
-            }.toList()
-        if (explicit.isNotEmpty()) return explicit.first() to (explicit.getOrNull(1) ?: explicit.first())
+                runCatching {
+                    LocalDate.of(year, it.groupValues[2].toInt(), it.groupValues[3].toInt())
+                }.getOrNull()?.let { date -> mentions += it.range.first to date }
+            }
 
-        val relative = when {
-            text.contains("后天") -> today.plusDays(2)
-            text.contains("明天") -> today.plusDays(1)
-            text.contains("今天") || text.contains("今日") -> today
-            else -> parseWeekday(text, today) ?: today
+        Regex("后天|明天|今天|今日").findAll(text).forEach {
+            val date = when (it.value) {
+                "后天" -> today.plusDays(2)
+                "明天" -> today.plusDays(1)
+                else -> today
+            }
+            mentions += it.range.first to date
         }
-        return relative to relative
-    }
 
-    private fun parseWeekday(text: String, today: LocalDate): LocalDate? {
-        val match = Regex("(下周|本周|这周)?(?:周|星期)([一二三四五六日天])").find(text) ?: return null
-        val value = "一二三四五六日天".indexOf(match.groupValues[2]).let { if (it >= 7) 7 else it + 1 }
-        val day = DayOfWeek.of(value)
-        return if (match.groupValues[1] == "下周") {
-            today.plusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                .with(TemporalAdjusters.nextOrSame(day))
-        } else {
-            today.with(TemporalAdjusters.nextOrSame(day))
+        var inheritedWeekMarker = ""
+        Regex("(下|本|这)?(?:周|星期)([一二三四五六日天])").findAll(text).forEach { match ->
+            val explicitMarker = match.groupValues[1]
+            if (explicitMarker.isNotBlank()) inheritedWeekMarker = explicitMarker
+            val marker = explicitMarker.ifBlank { inheritedWeekMarker }
+            val value = "一二三四五六日天".indexOf(match.groupValues[2])
+                .let { if (it >= 7) 7 else it + 1 }
+            val day = DayOfWeek.of(value)
+            val date = when (marker) {
+                "下" -> today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    .plusWeeks(1).with(TemporalAdjusters.nextOrSame(day))
+                "本", "这" -> today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    .with(TemporalAdjusters.nextOrSame(day))
+                else -> today.with(TemporalAdjusters.nextOrSame(day))
+            }
+            mentions += match.range.first to date
         }
+
+        val dates = mentions.sortedBy { it.first }.map { it.second }
+        if (dates.isEmpty()) return today to today
+        return dates.first() to dates.last()
     }
 
     private fun extractReason(text: String): String {
