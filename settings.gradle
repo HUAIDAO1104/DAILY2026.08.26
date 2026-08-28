@@ -9,10 +9,11 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
-        maven { url = uri("https://jitpack.io") }
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+        // 国内网络的兜底镜像放在最后，避免镜像偶发 5xx 时让 CI 禁用整个仓库链路。
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
     }
 }
 
