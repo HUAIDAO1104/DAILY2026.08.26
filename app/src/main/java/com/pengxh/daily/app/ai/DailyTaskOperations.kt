@@ -71,9 +71,18 @@ class DailyTaskOperations(private val context: Context) {
             "tasks" to tasks,
             "leaves" to leaves,
             "schedulerRunning" to TaskScheduler.isRunning(),
+            "schedulerDesiredRunning" to TaskScheduler.isDesiredRunning(),
             "settings" to currentSettings(),
             "workdays" to CustomWorkdayManager.loadWorkdays().map { it.value }.sorted()
         )
+        TaskScheduler.getLastStopInfo()?.let { stopInfo ->
+            state["schedulerLastStop"] = mapOf(
+                "reason" to stopInfo.reason.name,
+                "description" to stopInfo.reason.description,
+                "detail" to stopInfo.detail,
+                "timestamp" to stopInfo.timestamp
+            )
+        }
         return gson.toJson(state)
     }
 

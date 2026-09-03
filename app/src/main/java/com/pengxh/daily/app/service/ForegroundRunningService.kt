@@ -101,10 +101,10 @@ class ForegroundRunningService : Service() {
                 setVibrate(null) // 禁用振动
             }
         val notification = notificationBuilder.build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 Constant.FOREGROUND_RUNNING_SERVICE_NOTIFICATION_ID, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             )
         } else {
             startForeground(Constant.FOREGROUND_RUNNING_SERVICE_NOTIFICATION_ID, notification)
@@ -146,6 +146,9 @@ class ForegroundRunningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         checkLowBattery()
+        TaskScheduler.restoreIfNeeded(
+            if (intent == null) "系统重建前台服务" else "前台服务启动"
+        )
         return START_STICKY
     }
 
@@ -155,6 +158,7 @@ class ForegroundRunningService : Service() {
                 when (it) {
                     Intent.ACTION_TIME_TICK -> {
                         updateResetTimeView()
+                        TaskScheduler.restoreIfNeeded("前台服务存活检查")
                         checkAndTriggerReset()
                     }
 
@@ -267,8 +271,24 @@ class ForegroundRunningService : Service() {
             Constant.FOREGROUND_RUNNING_SERVICE_NOTIFICATION_ID, notification
         )
 
+        TaskScheduler.detach(
+            serviceScope,
+            TaskScheduler.StopReason.SERVICE_DESTROYED,
+            "ForegroundRunningService.onDestroy"
+        )
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        val detail = "前台服务被系统限时，type=$fgsType，startId=$startId"
+        LogFileManager.writeLog(detail)
+        TaskScheduler.detach(
+            serviceScope,
+            TaskScheduler.StopReason.FOREGROUND_TIMEOUT,
+            detail
+        )
+        stopSelf(startId)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

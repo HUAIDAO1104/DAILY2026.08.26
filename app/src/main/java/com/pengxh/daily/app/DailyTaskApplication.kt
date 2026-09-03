@@ -83,6 +83,24 @@ class DailyTaskApplication : Application() {
         MessageDispatcher.initialize(this)
         LogFileManager.initLogFile(this)
 
+        // 旧版本没有持久化“用户希望调度持续运行”的状态。
+        // 升级时沿用每日自动循环配置；全新安装仍等待首次正常启动流程决定。
+        if (!SaveKeyValues.containsKey(Constant.TASK_DESIRED_RUNNING_KEY)) {
+            val existingInstall = SaveKeyValues.loadString(Constant.LAST_APP_VERSION_KEY, "")
+                .isNotBlank()
+            val shouldContinueRunning = existingInstall && SaveKeyValues.loadBoolean(
+                Constant.TASK_AUTO_RECYCLE_KEY,
+                true
+            )
+            SaveKeyValues.saveBoolean(
+                Constant.TASK_DESIRED_RUNNING_KEY,
+                shouldContinueRunning
+            )
+            LogFileManager.writeLog(
+                "初始化任务运行意图：${if (shouldContinueRunning) "继续运行" else "等待启动"}"
+            )
+        }
+
         // 初始化配置文件
         val dir = File(this.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "")
         val file = File(dir.toString() + File.separator + "DailyTaskConfig.json")

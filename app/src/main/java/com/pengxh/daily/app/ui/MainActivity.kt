@@ -165,7 +165,7 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
         }
 
         // 前台服务（保活 + 托管 TaskScheduler 协程作用域 + 每日重置）
-        Intent(this, ForegroundRunningService::class.java).apply { startForegroundService(this) }
+        ensureForegroundRunningService()
 
         // ================================================================
         // 每个 lifecycleScope.launch 都是独立的协程，互斥，不能为了省事把协程合并，否则只会执行第一个协程的业务，其他的业务被挂起
@@ -286,6 +286,9 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
     override fun onResume() {
         super.onResume()
+        // 回到前台时同时修复被系统回收的服务和调度协程。
+        ensureForegroundRunningService()
+        TaskScheduler.restoreIfNeeded("应用回到前台")
         if (!Settings.canDrawOverlays(this)) {
             "悬浮窗权限未开启，部分功能可能无法正常使用".show(this)
         } else {
@@ -593,7 +596,11 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                 }
             }
             else -> {
-                updateTaskControlUi(running = false)
+                val waitingForRestore = TaskScheduler.isDesiredRunning()
+                updateTaskControlUi(
+                    running = false,
+                    statusText = if (waitingForRestore) "任务状态 · 正在自动恢复" else null
+                )
                 binding.nextTaskTimeView.text = next?.toString()?.take(5) ?: "--:--"
                 binding.nextTaskTimeView.textSize = 54f
                 binding.nextTaskTimeView.letterSpacing = -0.06f
@@ -607,7 +614,15 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
                 val range = SaveKeyValues.loadInt(Constant.TIME_RANGE_KEY, Constant.DEFAULT_TIME_RANGE)
                 val random = SaveKeyValues.loadBoolean(Constant.RANDOM_TIME_KEY, true)
                 binding.repeatTimeView.text = if (next == null) "等待明日任务" else if (random) "随机 ±$range 分钟" else "按计划时间执行"
-                binding.tipsView.text = if (next == null) "今天已无待执行时间" else "通知、权限与日期规则已检查"
+                binding.tipsView.text = if (waitingForRestore) {
+                    TaskScheduler.getLastStopInfo()?.let {
+                        "检测到${it.reason.description}，正在自动恢复"
+                    } ?: "任务服务正在自动恢复"
+                } else if (next == null) {
+                    "今天已无待执行时间"
+                } else {
+                    "通知、权限与日期规则已检查"
+                }
                 binding.aiInsightNoteView.text = if (enabledTasks.isEmpty()) "还没有任务，添加后即可开始" else "权限、网络与日期规则正常，可按时执行"
             }
         }
@@ -644,6 +659,10 @@ class MainActivity : KotlinBaseActivity<ActivityMainBinding>() {
 
     private fun ensureFloatingWindowService() {
         startService(Intent(this, FloatingWindowService::class.java))
+    }
+
+    private fun ensureForegroundRunningService() {
+        startForegroundService(Intent(this, ForegroundRunningService::class.java))
     }
 
     private fun checkForUpdates(force: Boolean, showNoUpdateMessage: Boolean) {

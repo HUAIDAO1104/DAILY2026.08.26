@@ -13,9 +13,9 @@ import com.pengxh.kt.lite.utils.SaveKeyValues
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,11 +34,30 @@ import java.util.Calendar
  * 任务调度器
  */
 object TaskScheduler {
+    enum class StopReason(val description: String) {
+        USER_PAUSED("用户主动暂停"),
+        SERVICE_RECREATED("任务服务被系统重建"),
+        SERVICE_DESTROYED("任务服务被系统停止"),
+        FOREGROUND_TIMEOUT("系统限制了后台运行时长"),
+        TARGET_APP_ERROR("目标应用启动失败"),
+        SCHEDULER_ERROR("任务调度发生异常"),
+        UNEXPECTED_COMPLETION("任务调度意外结束")
+    }
+
+    data class StopInfo(
+        val reason: StopReason,
+        val detail: String,
+        val timestamp: Long
+    )
+
     /**
      * 调度器是否在运行中
      * */
     private val _isRunning = MutableStateFlow(false)
     val isRunning = _isRunning.asStateFlow()
+
+    private val _lastStopInfo = MutableStateFlow(loadLastStopInfo())
+    val lastStopInfo = _lastStopInfo.asStateFlow()
 
     /**
      * UI 文本事件（tipsView / adapter 高亮），不参与按钮逻辑
@@ -52,7 +71,12 @@ object TaskScheduler {
     private val _returnToApp = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
     val returnToApp = _returnToApp.asSharedFlow()
 
+    private val stateLock = Any()
+
+    @Volatile
     private var scope: CoroutineScope? = null
+
+    @Volatile
     private var job: Job? = null
 
     /**
@@ -66,33 +90,95 @@ object TaskScheduler {
      * 由 ForegroundRunningService 调用，注入协程作用域
      */
     fun attach(serviceScope: CoroutineScope) {
-        scope?.cancel()
-        scope = serviceScope
+        val previousJob = synchronized(stateLock) {
+            if (scope === serviceScope) return
+
+            val activeJob = job?.takeIf { !it.isCompleted }
+            if (scope != null && activeJob != null) {
+                job = null
+                _isRunning.value = false
+            }
+            scope = serviceScope
+            activeJob
+        }
+
+        if (previousJob != null) {
+            recordStop(
+                StopReason.SERVICE_RECREATED,
+                "检测到新的前台服务实例，迁移任务调度"
+            )
+            previousJob.cancel(CancellationException("前台服务实例已更换"))
+        }
+        LogFileManager.writeLog("TaskScheduler 已挂接前台服务")
+    }
+
+    /**
+     * 前台服务销毁时解除作用域。保留用户的运行意图，等待服务恢复后自动续跑。
+     */
+    fun detach(
+        serviceScope: CoroutineScope,
+        reason: StopReason = StopReason.SERVICE_DESTROYED,
+        detail: String = reason.description
+    ) {
+        val activeJob = synchronized(stateLock) {
+            if (scope !== serviceScope) return
+            scope = null
+            val currentJob = job?.takeIf { !it.isCompleted }
+            job = null
+            _isRunning.value = false
+            currentJob
+        }
+
+        if (isDesiredRunning()) {
+            recordStop(reason, detail)
+            activeJob?.cancel(CancellationException(detail))
+        }
     }
 
     fun isRunning(): Boolean {
         return _isRunning.value
     }
 
+    fun isDesiredRunning(): Boolean {
+        return SaveKeyValues.loadBoolean(Constant.TASK_DESIRED_RUNNING_KEY, false)
+    }
+
+    fun getLastStopInfo(): StopInfo? = _lastStopInfo.value
+
     /**
      * 启动每日任务调度
      * 时序：防重复 → 检查协程作用域 → 判断周末/节假日 → 构建排程 → 启动核心循环
      */
     fun startTask() {
-        if (_isRunning.value) {
-            LogFileManager.writeLog("任务已在执行中，忽略重复启动")
-            return
+        SaveKeyValues.saveBoolean(Constant.TASK_DESIRED_RUNNING_KEY, true)
+        startIfPossible("用户或自动规则请求启动")
+    }
+
+    /**
+     * 服务重建、应用回到前台或存活检查时恢复调度器。
+     * 只有用户此前明确启动过任务时才会生效，主动暂停不会被误恢复。
+     */
+    fun restoreIfNeeded(trigger: String): Boolean {
+        if (!isDesiredRunning()) return false
+        return startIfPossible(trigger)
+    }
+
+    private fun startIfPossible(trigger: String): Boolean {
+        synchronized(stateLock) {
+            if (job?.isCompleted == false) {
+                _isRunning.value = true
+                return true
+            }
         }
 
         val currentScope = scope
-        if (currentScope == null) {
-            LogFileManager.writeLog("TaskScheduler scope 未初始化")
-            return
+        if (currentScope == null || !currentScope.isActive) {
+            LogFileManager.writeLog("TaskScheduler 暂未挂接可用服务，保留启动意图：$trigger")
+            return false
         }
 
-        _isRunning.value = true
-
-        val tempJob = currentScope.launch {
+        var terminalReasonRecorded = false
+        val tempJob = currentScope.launch(start = CoroutineStart.LAZY) {
             try {
                 while (isActive) {
                     val today = LocalDate.now()
@@ -115,12 +201,14 @@ object TaskScheduler {
                     } else {
                         val schedule = buildTodaySchedule()
                         if (schedule.isEmpty()) {
-                            LogFileManager.writeLog("任务列表为空，停止调度")
-                            return@launch
+                            LogFileManager.writeLog("今日没有可执行任务，保持调度并等待下一任务周期")
+                            ForegroundRunningService.emitNotificationText(
+                                "今日没有可执行任务，调度守护中"
+                            )
+                        } else {
+                            LogFileManager.writeLog("开始执行每日任务，共 ${schedule.size} 个")
+                            executeSchedule(schedule)
                         }
-
-                        LogFileManager.writeLog("开始执行每日任务，共 ${schedule.size} 个")
-                        executeSchedule(schedule)
                     }
 
                     lastProcessedDate = today
@@ -133,15 +221,61 @@ object TaskScheduler {
             } catch (error: Throwable) {
                 val reason = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
                 LogFileManager.writeLog("任务调度异常：$reason")
+                terminalReasonRecorded = true
+                recordStop(StopReason.SCHEDULER_ERROR, reason)
                 FloatingWindowController.hide()
                 ForegroundRunningService.emitNotificationText("任务启动失败，请打开应用检查")
                 _tipsEvent.emit(TipsEvent.Error("任务启动失败，请重试"))
             }
         }
-        tempJob.invokeOnCompletion {
-            _isRunning.value = false
+
+        val installed = synchronized(stateLock) {
+            if (job?.isCompleted == false) {
+                false
+            } else {
+                job = tempJob
+                _isRunning.value = true
+                true
+            }
         }
-        job = tempJob
+        if (!installed) {
+            tempJob.cancel()
+            return true
+        }
+
+        tempJob.invokeOnCompletion { cause ->
+            val wasCurrentJob = synchronized(stateLock) {
+                if (job !== tempJob) {
+                    false
+                } else {
+                    job = null
+                    _isRunning.value = false
+                    true
+                }
+            }
+
+            if (wasCurrentJob) {
+                when {
+                    cause is CancellationException -> {
+                        LogFileManager.writeLog("任务调度已取消：${cause.message ?: "未提供原因"}")
+                    }
+
+                    cause != null -> {
+                        recordStop(
+                            StopReason.SCHEDULER_ERROR,
+                            cause.message ?: cause.javaClass.simpleName
+                        )
+                    }
+
+                    isDesiredRunning() && !terminalReasonRecorded -> {
+                        recordStop(StopReason.UNEXPECTED_COMPLETION, "调度协程在未暂停时结束")
+                    }
+                }
+            }
+        }
+        LogFileManager.writeLog("任务调度已启动：$trigger")
+        tempJob.start()
+        return true
     }
 
     /**
@@ -339,15 +473,16 @@ object TaskScheduler {
     }
 
     fun stopTask() {
-        if (!_isRunning.value) {
-            LogFileManager.writeLog("任务未运行，无需停止")
-            return
+        SaveKeyValues.saveBoolean(Constant.TASK_DESIRED_RUNNING_KEY, false)
+        recordStop(StopReason.USER_PAUSED, "用户主动暂停任务")
+        val activeJob = synchronized(stateLock) {
+            val currentJob = job
+            job = null
+            _isRunning.value = false
+            currentJob
         }
-
-        LogFileManager.writeLog("停止执行每日任务")
-        job?.cancel()
-        job = null
-        _isRunning.value = false
+        LogFileManager.writeLog("用户停止执行每日任务")
+        activeJob?.cancel(CancellationException("用户主动暂停任务"))
         FloatingWindowController.hide()
         ForegroundRunningService.emitNotificationText("为保证程序正常运行，请勿移除此通知")
     }
@@ -362,10 +497,37 @@ object TaskScheduler {
      */
     fun requestStopDueToError(reason: String) {
         LogFileManager.writeLog("因错误请求停止：$reason")
-        job?.cancel()
-        job = null
-        _isRunning.value = false
+        recordStop(StopReason.TARGET_APP_ERROR, reason)
+        val activeJob = synchronized(stateLock) {
+            val currentJob = job
+            job = null
+            _isRunning.value = false
+            currentJob
+        }
+        activeJob?.cancel(CancellationException(reason))
         FloatingWindowController.hide()
+    }
+
+    private fun recordStop(reason: StopReason, detail: String) {
+        val timestamp = System.currentTimeMillis()
+        SaveKeyValues.saveString(Constant.TASK_LAST_STOP_REASON_KEY, reason.name)
+        SaveKeyValues.saveString(Constant.TASK_LAST_STOP_DETAIL_KEY, detail.take(160))
+        SaveKeyValues.saveLong(Constant.TASK_LAST_STOP_TIME_KEY, timestamp)
+        _lastStopInfo.value = StopInfo(reason, detail.take(160), timestamp)
+        LogFileManager.writeLog("任务停止原因：${reason.description}；$detail")
+    }
+
+    private fun loadLastStopInfo(): StopInfo? {
+        val reasonName = SaveKeyValues.loadString(Constant.TASK_LAST_STOP_REASON_KEY, "")
+        val reason = runCatching { StopReason.valueOf(reasonName) }.getOrNull() ?: return null
+        return StopInfo(
+            reason = reason,
+            detail = SaveKeyValues.loadString(
+                Constant.TASK_LAST_STOP_DETAIL_KEY,
+                reason.description
+            ),
+            timestamp = SaveKeyValues.loadLong(Constant.TASK_LAST_STOP_TIME_KEY, 0L)
+        )
     }
 
     /**

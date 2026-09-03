@@ -203,8 +203,16 @@ class NotificationMonitorService : NotificationListenerService() {
 
             "状态查询" -> {
                 val type = SaveKeyValues.loadInt(Constant.MSG_CHANNEL_KEY, Constant.DEFAULT_INDEX)
+                val schedulerStatus = when {
+                    TaskScheduler.isRunning() -> "运行中"
+                    TaskScheduler.isDesiredRunning() -> "恢复中"
+                    else -> "已暂停"
+                }
                 val content = buildString {
-                    appendLine("任务状态：${if (TaskScheduler.isRunning()) "运行中" else "已停止"}")
+                    appendLine("任务状态：$schedulerStatus")
+                    TaskScheduler.getLastStopInfo()?.let {
+                        appendLine("上次停止：${it.reason.description}")
+                    }
                     appendLine("悬浮权限：${if (Settings.canDrawOverlays(this@NotificationMonitorService)) "已获取" else "被拒绝"}")
                     appendLine("通知监听：${if (listenerConnected) "正常" else "断开"}")
                     appendLine("截图服务：${if (ProjectionSession.isStateActive()) "正常" else "断开"}")
